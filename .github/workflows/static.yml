@@ -1,0 +1,3003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GEMINI BOY - Handheld Console & Cartridge Library</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --shell-bg: #d4d2c8;
+            --shell-shadow: #aba89e;
+            --shell-highlight: #eeece4;
+            --bezel-bg: #585660;
+            --magenta-btn: #8f1d46;
+            --magenta-btn-dark: #5e102b;
+            --navy-text: #212963;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at 50% 20%, #262936 0%, #12131a 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .pixel-font {
+            font-family: 'Press Start 2P', monospace;
+        }
+
+        /* Crisp 160x144 Native Pixel Rendering */
+        #gb-canvas {
+            image-rendering: -moz-crisp-edges;
+            image-rendering: -webkit-crisp-edges;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Authentic LCD Dot Matrix Grid Overlay */
+        .lcd-grid-overlay {
+            background-image: 
+                linear-gradient(to right, rgba(0, 0, 0, 0.11) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(0, 0, 0, 0.11) 1px, transparent 1px);
+            background-size: 0.625% 0.6944%; /* 1/160 and 1/144 */
+            box-shadow: inset 0 3px 8px rgba(0,0,0,0.45), inset 0 0 2px rgba(0,0,0,0.6);
+        }
+
+        /* Classic DMG-01 Handheld Shell */
+        .gb-shell {
+            background: linear-gradient(145deg, #dcdad0 0%, #c8c5b9 100%);
+            border-radius: 18px 18px 58px 18px;
+            box-shadow: 
+                inset 2px 3px 4px rgba(255, 255, 255, 0.75),
+                inset -4px -6px 10px rgba(0, 0, 0, 0.25),
+                0 25px 50px -12px rgba(0, 0, 0, 0.75),
+                0 0 0 2px #9e9b90;
+            position: relative;
+        }
+
+        /* Pocket Silver Shell Variant */
+        .gb-shell.shell-pocket {
+            background: linear-gradient(145deg, #d8dce0 0%, #b4bac2 100%);
+            box-shadow: 
+                inset 2px 3px 4px rgba(255, 255, 255, 0.8),
+                inset -4px -6px 10px rgba(0, 0, 0, 0.3),
+                0 25px 50px -12px rgba(0, 0, 0, 0.75),
+                0 0 0 2px #858c94;
+        }
+
+        /* Atomic Midnight Shell Variant */
+        .gb-shell.shell-midnight {
+            background: linear-gradient(145deg, #323645 0%, #232631 100%);
+            box-shadow: 
+                inset 2px 3px 4px rgba(255, 255, 255, 0.15),
+                inset -4px -6px 10px rgba(0, 0, 0, 0.5),
+                0 25px 50px -12px rgba(0, 0, 0, 0.85),
+                0 0 0 2px #1a1c24;
+        }
+        .gb-shell.shell-midnight .gb-logo-text {
+            color: #93a3e8;
+        }
+
+        /* Screen Bezel */
+        .gb-bezel {
+            background: linear-gradient(160deg, #63616b 0%, #4d4b54 100%);
+            border-radius: 12px 12px 34px 12px;
+            box-shadow: 
+                inset 0 3px 6px rgba(0,0,0,0.55),
+                0 2px 1px rgba(255,255,255,0.6);
+        }
+
+        /* Battery LED */
+        .battery-led {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #3a1212;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.8);
+            transition: all 0.25s ease;
+        }
+        .battery-led.on {
+            background: #ff2a2a;
+            box-shadow: 0 0 8px #ff2a2a, 0 0 14px #ff5555, inset 0 1px 2px #fff;
+        }
+
+        /* Tactile D-Pad */
+        .dpad-arm {
+            background: #232327;
+            box-shadow: 
+                inset 0 2px 2px rgba(255,255,255,0.18),
+                0 4px 0 #111113,
+                0 5px 6px rgba(0,0,0,0.45);
+            transition: transform 0.05s ease, box-shadow 0.05s ease, background-color 0.05s;
+        }
+        .dpad-arm.active {
+            background: #18181b;
+            transform: translateY(2px);
+            box-shadow: 
+                inset 0 1px 2px rgba(0,0,0,0.6),
+                0 1px 0 #111113,
+                0 2px 3px rgba(0,0,0,0.4);
+        }
+
+        /* A and B Buttons */
+        .ab-btn {
+            background: radial-gradient(circle at 35% 30%, #ad2657 0%, #85163e 70%, #630e2d 100%);
+            box-shadow: 
+                inset 0 2px 3px rgba(255, 255, 255, 0.35),
+                0 5px 0 #4a0920,
+                0 7px 10px rgba(0, 0, 0, 0.45);
+            transition: transform 0.05s ease, box-shadow 0.05s ease;
+        }
+        .ab-btn:active, .ab-btn.active {
+            transform: translateY(4px);
+            box-shadow: 
+                inset 0 1px 2px rgba(255, 255, 255, 0.2),
+                0 1px 0 #4a0920,
+                0 2px 4px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Select / Start Rubber Pill Buttons */
+        .pill-btn {
+            width: 44px;
+            height: 13px;
+            background: linear-gradient(180deg, #6e6c78 0%, #4d4b55 100%);
+            border-radius: 999px;
+            transform: rotate(-26deg);
+            box-shadow: 
+                inset 0 1px 1px rgba(255,255,255,0.3),
+                0 3px 0 #2e2d33,
+                0 4px 5px rgba(0,0,0,0.35);
+            transition: transform 0.05s ease, box-shadow 0.05s ease;
+        }
+        .pill-btn:active, .pill-btn.active {
+            transform: rotate(-26deg) translateY(2px);
+            box-shadow: 
+                inset 0 1px 2px rgba(0,0,0,0.4),
+                0 1px 0 #2e2d33;
+        }
+
+        /* Speaker Grille Slots */
+        .speaker-slot {
+            width: 6px;
+            height: 36px;
+            background: #2b2a27;
+            border-radius: 999px;
+            box-shadow: inset 1px 1px 2px rgba(0,0,0,0.85), 1px 0 0 rgba(255,255,255,0.45);
+        }
+
+        .gb-logo-text {
+            color: var(--navy-text);
+        }
+
+        /* Realistic Game Boy Plastic Cartridge Styling */
+        .gb-cartridge {
+            clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
+            border-radius: 6px 2px 5px 5px;
+            box-shadow:
+                inset 2px 2px 3px rgba(255, 255, 255, 0.45),
+                inset -3px -3px 6px rgba(0, 0, 0, 0.45),
+                0 8px 18px rgba(0, 0, 0, 0.5);
+            transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease;
+            position: relative;
+        }
+        .gb-cartridge:hover {
+            transform: translateY(-4px) scale(1.015);
+            box-shadow:
+                inset 2px 2px 3px rgba(255, 255, 255, 0.55),
+                inset -3px -3px 6px rgba(0, 0, 0, 0.45),
+                0 14px 24px rgba(0, 0, 0, 0.65);
+        }
+        .gb-cartridge.inserted-active {
+            outline: 2px solid #34d399;
+            outline-offset: 2px;
+        }
+
+        /* Cartridge Shell Color Themes */
+        .cart-shell-gold {
+            background: linear-gradient(145deg, #ecd06f 0%, #c6992c 55%, #966f15 100%);
+        }
+        .cart-shell-grey {
+            background: linear-gradient(145deg, #c2c0b6 0%, #9b988e 55%, #7c7970 100%);
+        }
+        .cart-shell-blue {
+            background: linear-gradient(145deg, #3b82f6 0%, #1d4ed8 55%, #1e3a8a 100%);
+        }
+        .cart-shell-yellow {
+            background: linear-gradient(145deg, #fde047 0%, #eab308 55%, #a16207 100%);
+        }
+        .cart-shell-red {
+            background: linear-gradient(145deg, #f87171 0%, #dc2626 55%, #991b1b 100%);
+        }
+
+        /* Cartridge Grip Ribs */
+        .cart-ribs {
+            background: repeating-linear-gradient(
+                to bottom,
+                rgba(0, 0, 0, 0.28) 0px,
+                rgba(0, 0, 0, 0.28) 2px,
+                rgba(255, 255, 255, 0.22) 2px,
+                rgba(255, 255, 255, 0.22) 4px
+            );
+        }
+
+        /* Top-Slot Physical Cartridge Peeking Behind Console */
+        .top-slot-cart {
+            clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+            border-radius: 5px 2px 0 0;
+            box-shadow:
+                inset 2px 2px 2px rgba(255,255,255,0.4),
+                inset -2px 0 4px rgba(0,0,0,0.4),
+                0 -4px 12px rgba(0,0,0,0.5);
+            transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.22s ease;
+        }
+        .top-slot-cart.ejected {
+            transform: translateY(-42px);
+            opacity: 0;
+            pointer-events: none;
+        }
+        .top-slot-cart.inserting {
+            transform: translateY(-34px);
+        }
+        .top-slot-cart.seated {
+            transform: translateY(8px);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="text-slate-100 flex flex-col items-center justify-between p-2 sm:p-4">
+
+    <!-- Top Toolbar & Hardware Controls -->
+    <header class="w-full max-w-6xl flex flex-wrap items-center justify-between gap-2 bg-slate-900/80 backdrop-blur-md border border-slate-700/70 rounded-2xl px-3.5 py-2.5 shadow-xl mb-3">
+        <div class="flex items-center gap-2.5">
+            <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-bold text-xs pixel-font">GB</span>
+            <div>
+                <h1 class="text-xs sm:text-sm font-bold tracking-wider text-white flex items-center gap-2">
+                    GEMINI BOY <span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/30 text-indigo-300 border border-indigo-400/30 font-semibold">DMG-01 + GAME PAK RACK</span>
+                </h1>
+                <p class="text-[11px] text-slate-400 hidden sm:block">160×144 Dot-Matrix Simulator • Click Any Cartridge Below to Insert & Boot</p>
+            </div>
+        </div>
+
+        <!-- Hardware & Display Options -->
+        <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <!-- Inserted Cartridge Status Pill -->
+            <div class="flex items-center gap-1.5 bg-slate-950/90 border border-slate-700 rounded-xl px-2.5 py-1 text-xs">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" id="slot-status-dot"></span>
+                <span class="text-slate-400 text-[11px]">SLOT-1:</span>
+                <span id="header-cart-label" class="font-bold text-emerald-300 text-[11px] font-mono">DMG-4IN1-GOLD</span>
+                <button onclick="ejectCartridge()" id="eject-btn" class="ml-1.5 px-2 py-0.5 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-[10px] font-bold transition" title="Eject Game Pak from Console">
+                    ⏏ EJECT
+                </button>
+            </div>
+
+            <!-- Palette Selector -->
+            <button onclick="cyclePalette()" id="palette-btn" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-semibold text-emerald-300 transition" title="Switch LCD Color Palette">
+                <span class="w-2.5 h-2.5 rounded-full bg-[#8bac0f] inline-block" id="palette-dot"></span>
+                <span id="palette-label">Classic Olive</span>
+            </button>
+
+            <!-- LCD Grid Toggle -->
+            <button onclick="toggleLcdGrid()" id="grid-btn" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-semibold text-slate-200 transition" title="Toggle Pixel Matrix Grid">
+                LCD Grid: ON
+            </button>
+
+            <!-- Audio Toggle -->
+            <button onclick="toggleAudio()" id="audio-btn" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-xs font-semibold text-emerald-300 transition">
+                <span id="audio-icon">🔊</span>
+                <span id="audio-label">8-Bit Audio</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content: Handheld Console + Cartridge Library Rack & Manual -->
+    <main class="w-full max-w-6xl flex flex-col lg:flex-row items-center lg:items-start justify-center gap-6 my-auto py-1">
+
+        <!-- AUTHENTIC GAME BOY HANDHELD CONSOLE -->
+        <div class="relative flex flex-col items-center shrink-0">
+
+            <!-- Animated Physical Cartridge Sticking Out of Top Slot -->
+            <div class="w-[240px] sm:w-[264px] h-8 flex justify-center items-end overflow-visible z-0 relative">
+                <div id="top-slot-cart" onclick="ejectCartridge()" title="Click to Eject Cartridge"
+                    class="top-slot-cart seated cart-shell-gold w-[196px] sm:w-[214px] h-11 px-2 pt-1.5 flex flex-col items-center cursor-pointer">
+                    <div class="w-full flex items-center justify-between gap-1">
+                        <div class="w-5 h-3.5 cart-ribs rounded-xs"></div>
+                        <div class="flex-1 h-4 rounded-full bg-black/25 shadow-inner flex items-center justify-center px-2 border border-white/15">
+                            <span id="top-slot-code" class="text-[8px] font-black tracking-widest text-white/90 drop-shadow">DMG-4IN1-GOLD</span>
+                        </div>
+                        <div class="w-5 h-3.5 cart-ribs rounded-xs"></div>
+                    </div>
+                    <div id="top-slot-sticker" class="w-[88%] h-2.5 mt-1 rounded-t-xs bg-gradient-to-r from-amber-500 via-red-500 to-indigo-600 border-t border-x border-white/50"></div>
+                </div>
+            </div>
+
+            <!-- Top Power Switch & Molding -->
+            <div class="w-[290px] sm:w-[320px] flex justify-between items-center px-5 mb-[-3px] z-10">
+                <button onclick="togglePower()" class="group flex items-center gap-1.5 bg-[#b8b5a8] hover:bg-[#c8c5b8] px-3 py-1 rounded-t-lg border-t border-x border-[#8f8c80] text-[10px] font-bold text-neutral-800 shadow-sm transition">
+                    <span id="power-switch-pill" class="w-2.5 h-2.5 rounded-full bg-emerald-600 transition-transform transform translate-x-0"></span>
+                    <span>◀ OFF•ON ▶</span>
+                </button>
+                <button onclick="cycleShell()" class="bg-[#b8b5a8] hover:bg-[#c8c5b8] px-2.5 py-1 rounded-t-lg border-t border-x border-[#8f8c80] text-[10px] font-bold text-neutral-700 transition">
+                    SHELL COLOR
+                </button>
+            </div>
+
+            <!-- The Console Body -->
+            <div id="gb-shell" class="gb-shell w-[332px] sm:w-[366px] p-4 sm:p-5 flex flex-col select-none z-10">
+                
+                <!-- Top Groove Lines -->
+                <div class="w-full border-b-2 border-black/15 pb-1.5 mb-2.5 flex justify-between items-center text-[9px] font-bold tracking-widest text-neutral-600/80">
+                    <span>◁ OFF•ON ▷</span>
+                    <span>DMG-01</span>
+                </div>
+
+                <!-- Dark Grey Screen Bezel -->
+                <div class="gb-bezel w-full p-3 sm:p-4 flex flex-col items-center">
+                    <!-- Bezel Top Header with Iconic Magenta & Navy Stripes -->
+                    <div class="w-full flex flex-col gap-0.5 mb-2">
+                        <div class="w-full h-[2px] bg-[#8f1d46]"></div>
+                        <div class="flex items-center justify-between px-1 py-0.5">
+                            <span class="text-[8px] sm:text-[9px] font-bold tracking-widest text-slate-200">DOT MATRIX WITH STEREO SOUND</span>
+                        </div>
+                        <div class="w-full h-[2px] bg-[#212963]"></div>
+                    </div>
+
+                    <!-- Battery Indicator + 160x144 Screen Container -->
+                    <div class="w-full flex items-center gap-2.5 sm:gap-3 my-1">
+                        <!-- Left Battery Column -->
+                        <div class="flex flex-col items-center justify-center gap-1.5 w-8 sm:w-9">
+                            <div id="battery-led" class="battery-led on"></div>
+                            <span class="text-[7px] sm:text-[8px] font-bold tracking-wider text-slate-300">BATTERY</span>
+                        </div>
+
+                        <!-- 160x144 Native Aspect Ratio LCD Screen (10:9) -->
+                        <div class="relative flex-1 aspect-[160/144] rounded-md overflow-hidden border-4 border-[#272924] shadow-inner bg-[#9bbc0f]">
+                            <canvas id="gb-canvas" width="160" height="144"></canvas>
+                            <div id="lcd-grid" class="lcd-grid-overlay absolute inset-0 pointer-events-none"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Nintendo / Gemini Boy Brand Emblem -->
+                <div class="w-full flex items-baseline justify-between px-2 mt-2.5 mb-3">
+                    <div class="flex items-baseline gap-1.5">
+                        <span class="gb-logo-text font-extrabold italic tracking-tight text-sm sm:text-base">GEMINI</span>
+                        <span class="gb-logo-text font-black tracking-wider text-base sm:text-lg pixel-font">GAME BOY</span>
+                        <span class="gb-logo-text text-[10px] font-bold">TM</span>
+                    </div>
+                    <span id="active-cart-badge" class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-black/10 text-neutral-700 uppercase">4-IN-1</span>
+                </div>
+
+                <!-- Controls Area: D-Pad on Left, Angled B & A on Right -->
+                <div class="w-full flex items-center justify-between px-2 sm:px-3 my-2">
+                    
+                    <!-- Tactile Cross D-Pad -->
+                    <div class="relative w-28 h-28 sm:w-32 sm:h-32 flex items-center justify-center">
+                        <!-- Subtle Recessed Circle Behind D-Pad -->
+                        <div class="absolute inset-1 rounded-full bg-black/5 shadow-inner pointer-events-none"></div>
+
+                        <!-- Center Pivot -->
+                        <div class="w-9 h-9 bg-[#232327] z-10 flex items-center justify-center pointer-events-none">
+                            <div class="w-5 h-5 rounded-full bg-[#1a1a1d] shadow-inner"></div>
+                        </div>
+
+                        <!-- UP Button -->
+                        <button id="btn-up" data-key="UP" aria-label="Up"
+                            class="dpad-arm absolute top-1.5 w-9 h-10 rounded-t-md flex flex-col items-center justify-start pt-1.5 z-20 cursor-pointer">
+                            <span class="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-b-[7px] border-b-neutral-500 mb-1"></span>
+                            <span class="w-5 h-0.5 bg-neutral-700 rounded"></span>
+                        </button>
+
+                        <!-- DOWN Button -->
+                        <button id="btn-down" data-key="DOWN" aria-label="Down"
+                            class="dpad-arm absolute bottom-1.5 w-9 h-10 rounded-b-md flex flex-col items-center justify-end pb-1.5 z-20 cursor-pointer">
+                            <span class="w-5 h-0.5 bg-neutral-700 rounded mb-1"></span>
+                            <span class="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[7px] border-t-neutral-500"></span>
+                        </button>
+
+                        <!-- LEFT Button -->
+                        <button id="btn-left" data-key="LEFT" aria-label="Left"
+                            class="dpad-arm absolute left-1.5 w-10 h-9 rounded-l-md flex items-center justify-start pl-1.5 z-20 cursor-pointer">
+                            <span class="w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-r-[7px] border-r-neutral-500 mr-1"></span>
+                            <span class="w-0.5 h-5 bg-neutral-700 rounded"></span>
+                        </button>
+
+                        <!-- RIGHT Button -->
+                        <button id="btn-right" data-key="RIGHT" aria-label="Right"
+                            class="dpad-arm absolute right-1.5 w-10 h-9 rounded-r-md flex items-center justify-end pr-1.5 z-20 cursor-pointer">
+                            <span class="w-0.5 h-5 bg-neutral-700 rounded mr-1"></span>
+                            <span class="w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-l-[7px] border-l-neutral-500"></span>
+                        </button>
+                    </div>
+
+                    <!-- Angled B and A Buttons Capsule -->
+                    <div class="relative flex items-center gap-4 sm:gap-5 px-3.5 py-2.5 rounded-full bg-black/10 shadow-inner -rotate-[25deg]">
+                        <!-- B Button -->
+                        <div class="flex flex-col items-center">
+                            <button id="btn-b" data-key="B" aria-label="B Button"
+                                class="ab-btn w-11 h-11 sm:w-12 sm:h-12 rounded-full cursor-pointer"></button>
+                            <span class="gb-logo-text font-black tracking-widest text-xs sm:text-sm mt-1.5 select-none">B</span>
+                        </div>
+                        <!-- A Button -->
+                        <div class="flex flex-col items-center">
+                            <button id="btn-a" data-key="A" aria-label="A Button"
+                                class="ab-btn w-11 h-11 sm:w-12 sm:h-12 rounded-full cursor-pointer"></button>
+                            <span class="gb-logo-text font-black tracking-widest text-xs sm:text-sm mt-1.5 select-none">A</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Area: SELECT / START Pills & Speaker Grille -->
+                <div class="w-full flex items-end justify-between mt-4 mb-1 px-3">
+                    <div class="w-12"></div>
+
+                    <!-- SELECT & START -->
+                    <div class="flex items-center gap-6 sm:gap-7 mb-2">
+                        <div class="flex flex-col items-center">
+                            <button id="btn-select" data-key="SELECT" aria-label="Select" class="pill-btn cursor-pointer"></button>
+                            <span class="gb-logo-text text-[9px] font-extrabold tracking-widest mt-2.5">SELECT</span>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <button id="btn-start" data-key="START" aria-label="Start" class="pill-btn cursor-pointer"></button>
+                            <span class="gb-logo-text text-[9px] font-extrabold tracking-widest mt-2.5">START</span>
+                        </div>
+                    </div>
+
+                    <!-- Angled Speaker Grille -->
+                    <div class="flex items-center gap-1.5 -rotate-[28deg] mr-1 mb-1 opacity-90">
+                        <div class="speaker-slot"></div>
+                        <div class="speaker-slot"></div>
+                        <div class="speaker-slot"></div>
+                        <div class="speaker-slot"></div>
+                        <div class="speaker-slot"></div>
+                        <div class="speaker-slot"></div>
+                    </div>
+                </div>
+
+                <!-- Bottom Headphone Engraving -->
+                <div class="w-full flex justify-center mt-1">
+                    <span class="text-[8px] font-bold tracking-widest text-neutral-600/70 bg-black/5 px-2 py-0.5 rounded-full">🎧 PHONES</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT SIDE PANEL: Interactive Game Boy Cartridge Rack + Active Manual -->
+        <aside class="w-full max-w-2xl flex-1 flex flex-col gap-3.5">
+
+            <!-- INTERACTIVE PHYSICAL CARTRIDGE RACK -->
+            <div class="bg-slate-900/90 border border-slate-700/80 rounded-2xl p-4 shadow-2xl">
+                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3 mb-3.5">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">GAME PAK LIBRARY</span>
+                            <span class="text-[11px] text-slate-400">6 Official Cartridges</span>
+                        </div>
+                        <h2 class="text-sm sm:text-base font-extrabold text-white mt-1">Select a Cartridge to Insert into Slot-1</h2>
+                    </div>
+
+                    <!-- Category Filter Pills -->
+                    <div class="flex items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800 text-[11px]">
+                        <button onclick="filterCartRack('ALL')" id="filter-ALL" class="px-2.5 py-1 rounded-lg font-semibold bg-emerald-600 text-white transition">All (6)</button>
+                        <button onclick="filterCartRack('ACTION')" id="filter-ACTION" class="px-2 py-1 rounded-lg font-semibold text-slate-400 hover:text-white transition">Action</button>
+                        <button onclick="filterCartRack('ARCADE')" id="filter-ARCADE" class="px-2 py-1 rounded-lg font-semibold text-slate-400 hover:text-white transition">Arcade/Puzzle</button>
+                    </div>
+                </div>
+
+                <!-- 6 Physical Game Boy Cartridges Grid -->
+                <div id="cartridge-rack-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <!-- Populated dynamically by renderCartridgeRack() -->
+                </div>
+            </div>
+
+            <!-- Active Cartridge Manual & Controls Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                <!-- Active Cartridge Manual Card -->
+                <div class="bg-slate-900/85 border border-slate-700/80 rounded-2xl p-4 shadow-xl flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-2.5 mb-2.5">
+                            <div>
+                                <span id="manual-code" class="text-[10px] font-bold font-mono uppercase tracking-wider text-emerald-400">DMG-4IN1-GOLD</span>
+                                <h3 id="manual-title" class="text-xs sm:text-sm font-bold text-white pixel-font mt-0.5">5-IN-1 MULTICART</h3>
+                            </div>
+                            <button onclick="rebootCurrentCartridge()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] font-semibold text-amber-300 border border-slate-600 transition" title="Reboot Console with Current Cartridge">
+                                ↻ Reboot
+                            </button>
+                        </div>
+
+                        <p id="manual-desc" class="text-xs text-slate-300 leading-relaxed mb-3">
+                            Use <strong class="text-emerald-300">UP / DOWN</strong> on the D-Pad to choose from 5 built-in 8-bit games, then press <strong class="text-emerald-300">A</strong> or <strong class="text-emerald-300">START</strong> to launch!
+                        </p>
+                    </div>
+
+                    <div id="manual-tips" class="bg-slate-950/70 border border-slate-800 rounded-xl p-2.5 text-[11px] text-slate-300 space-y-1">
+                        <div>💡 <strong>TIP:</strong> Click any physical Game Pak above to swap cartridges with a realistic top-slot insertion!</div>
+                        <div>🕹️ Press <strong>SELECT</strong> (Shift) during a game on the Multicart to return to the Multicart menu.</div>
+                    </div>
+                </div>
+
+                <!-- Controls & Battery-Backed SRAM High Scores -->
+                <div class="flex flex-col gap-3.5">
+                    <!-- Keyboard & Touch Controls Reference -->
+                    <div class="bg-slate-900/85 border border-slate-700/80 rounded-2xl p-3.5 shadow-xl">
+                        <h3 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between">
+                            <span>Controls Guide</span>
+                            <span class="text-[10px] text-emerald-400 font-normal">Keyboard + Touch</span>
+                        </h3>
+                        <div class="grid grid-cols-2 gap-1.5 text-[11px]">
+                            <div class="bg-slate-800/70 rounded-lg px-2 py-1.5 border border-slate-700/60 flex items-center justify-between">
+                                <span class="text-slate-400">D-Pad</span>
+                                <kbd class="px-1.5 py-0.5 bg-slate-950 rounded text-[10px] font-mono text-emerald-300 border border-slate-700">Arrows/WASD</kbd>
+                            </div>
+                            <div class="bg-slate-800/70 rounded-lg px-2 py-1.5 border border-slate-700/60 flex items-center justify-between">
+                                <span class="text-slate-400">A Button</span>
+                                <kbd class="px-1.5 py-0.5 bg-slate-950 rounded text-[10px] font-mono text-pink-300 border border-slate-700">X / K / Space</kbd>
+                            </div>
+                            <div class="bg-slate-800/70 rounded-lg px-2 py-1.5 border border-slate-700/60 flex items-center justify-between">
+                                <span class="text-slate-400">B Button</span>
+                                <kbd class="px-1.5 py-0.5 bg-slate-950 rounded text-[10px] font-mono text-pink-300 border border-slate-700">Z / J</kbd>
+                            </div>
+                            <div class="bg-slate-800/70 rounded-lg px-2 py-1.5 border border-slate-700/60 flex items-center justify-between">
+                                <span class="text-slate-400">START/SEL</span>
+                                <kbd class="px-1.5 py-0.5 bg-slate-950 rounded text-[10px] font-mono text-amber-300 border border-slate-700">Enter / Shift</kbd>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- High Scores & Cartridge Memory -->
+                    <div class="bg-slate-900/85 border border-slate-700/80 rounded-2xl p-3.5 shadow-xl">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Cartridge Battery SRAM</h3>
+                            <span class="text-[10px] text-emerald-400 font-mono">SAVED OK</span>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-[11px]">
+                            <div class="bg-slate-950/60 rounded-lg px-2 py-1 border border-slate-800 flex justify-between">
+                                <span class="text-slate-400">Quest:</span>
+                                <span id="hi-QUEST" class="font-mono font-bold text-emerald-400">0</span>
+                            </div>
+                            <div class="bg-slate-950/60 rounded-lg px-2 py-1 border border-slate-800 flex justify-between">
+                                <span class="text-slate-400">Tetra:</span>
+                                <span id="hi-TETRA" class="font-mono font-bold text-emerald-400">0</span>
+                            </div>
+                            <div class="bg-slate-950/60 rounded-lg px-2 py-1 border border-slate-800 flex justify-between">
+                                <span class="text-slate-400">Star:</span>
+                                <span id="hi-STAR" class="font-mono font-bold text-emerald-400">0</span>
+                            </div>
+                            <div class="bg-slate-950/60 rounded-lg px-2 py-1 border border-slate-800 flex justify-between">
+                                <span class="text-slate-400">Snake:</span>
+                                <span id="hi-SNAKE" class="font-mono font-bold text-emerald-400">0</span>
+                            </div>
+                            <div class="bg-slate-950/60 rounded-lg px-2 py-1 border border-slate-800 flex justify-between col-span-2 sm:col-span-2">
+                                <span class="text-slate-400">Turbo Racer GB:</span>
+                                <span id="hi-RACE" class="font-mono font-bold text-amber-400">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </aside>
+    </main>
+
+    <script>
+        /***********************************************************************
+         * 1. HARDWARE SPECIFICATIONS, PALETTES & BITMAP FONT (160x144)
+         ***********************************************************************/
+        const SCREEN_W = 160;
+        const SCREEN_H = 144;
+        const canvas = document.getElementById('gb-canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+
+        // Authentic 4-Shade Game Boy Palettes (0 = Darkest Ink, 3 = Lightest LCD Background)
+        const PALETTES = [
+            {
+                name: 'Classic Olive',
+                colors: ['#0f380f', '#306230', '#8bac0f', '#9bbc0f']
+            },
+            {
+                name: 'Pocket Mono',
+                colors: ['#181818', '#4a5138', '#8c926b', '#c5caa4']
+            },
+            {
+                name: 'Light Backlit',
+                colors: ['#06262e', '#0d6375', '#28a89e', '#8cf5e8']
+            },
+            {
+                name: 'Amber Gold',
+                colors: ['#2b1321', '#6e273d', '#b85340', '#f5c26b']
+            }
+        ];
+
+        let currentPaletteIdx = 0;
+        let pal = PALETTES[0].colors;
+        let powerOn = true;
+        let lcdGridOn = true;
+        let shellIdx = 0;
+        const SHELL_CLASSES = ['', 'shell-pocket', 'shell-midnight'];
+
+        // High Scores (persisted in memory/localStorage safely)
+        const highScores = {
+            QUEST: 0,
+            TETRA: 0,
+            STAR: 0,
+            SNAKE: 0,
+            RACE: 0
+        };
+        try {
+            const saved = localStorage.getItem('gemini_boy_sram');
+            if (saved) Object.assign(highScores, JSON.parse(saved));
+        } catch (e) {}
+
+        function saveHighScore(gameKey, score) {
+            if (score > (highScores[gameKey] || 0)) {
+                highScores[gameKey] = score;
+                const el = document.getElementById('hi-' + gameKey);
+                if (el) el.textContent = score;
+                try {
+                    localStorage.setItem('gemini_boy_sram', JSON.stringify(highScores));
+                } catch (e) {}
+            }
+        }
+        Object.keys(highScores).forEach(k => {
+            const el = document.getElementById('hi-' + k);
+            if (el) el.textContent = highScores[k];
+        });
+
+        // 5x5 Pixel Bitmap Font for crisp native 160x144 text rendering
+        const FONT_5X5 = {
+            'A': ['01110','10001','11111','10001','10001'],
+            'B': ['11110','10001','11110','10001','11110'],
+            'C': ['01111','10000','10000','10000','01111'],
+            'D': ['11110','10001','10001','10001','11110'],
+            'E': ['11111','10000','11110','10000','11111'],
+            'F': ['11111','10000','11110','10000','10000'],
+            'G': ['01111','10000','10111','10001','01111'],
+            'H': ['10001','10001','11111','10001','10001'],
+            'I': ['11111','00100','00100','00100','11111'],
+            'J': ['00111','00010','00010','10010','01100'],
+            'K': ['10001','10010','11100','10010','10001'],
+            'L': ['10000','10000','10000','10000','11111'],
+            'M': ['10001','11011','10101','10001','10001'],
+            'N': ['10001','11001','10101','10011','10001'],
+            'O': ['01110','10001','10001','10001','01110'],
+            'P': ['11110','10001','11110','10000','10000'],
+            'Q': ['01110','10001','10101','10010','01101'],
+            'R': ['11110','10001','11110','10010','10001'],
+            'S': ['01111','10000','01110','00001','11110'],
+            'T': ['11111','00100','00100','00100','00100'],
+            'U': ['10001','10001','10001','10001','01110'],
+            'V': ['10001','10001','10001','01010','00100'],
+            'W': ['10001','10001','10101','11011','10001'],
+            'X': ['10001','01010','00100','01010','10001'],
+            'Y': ['10001','01010','00100','00100','00100'],
+            'Z': ['11111','00010','00100','01000','11111'],
+            '0': ['01110','10011','10101','11001','01110'],
+            '1': ['00100','01100','00100','00100','01110'],
+            '2': ['11110','00001','01110','10000','11111'],
+            '3': ['11110','00001','00110','00001','11110'],
+            '4': ['10010','10010','11111','00010','00010'],
+            '5': ['11111','10000','11110','00001','11110'],
+            '6': ['01111','10000','11110','10001','01110'],
+            '7': ['11111','00001','00010','00100','00100'],
+            '8': ['01110','10001','01110','10001','01110'],
+            '9': ['01110','10001','01111','00001','11110'],
+            ':': ['00000','00100','00000','00100','00000'],
+            '-': ['00000','00000','11111','00000','00000'],
+            '.': ['00000','00000','00000','00000','00100'],
+            '!': ['00100','00100','00100','00000','00100'],
+            '?': ['01110','00001','00110','00000','00100'],
+            '/': ['00001','00010','00100','01000','10000'],
+            '>': ['10000','01000','00100','01000','10000'],
+            '<': ['00001','00010','00100','00010','00001'],
+            '+': ['00000','00100','01110','00100','00000'],
+            ' ': ['00000','00000','00000','00000','00000']
+        };
+
+        // Drawing Primitives on 160x144 Canvas using 4-shade palette index (0..3)
+        function clearScreen(shade = 3) {
+            ctx.fillStyle = pal[shade];
+            ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+        }
+
+        function fillRect(x, y, w, h, shade = 0) {
+            ctx.fillStyle = pal[shade];
+            ctx.fillRect(Math.floor(x), Math.floor(y), Math.floor(w), Math.floor(h));
+        }
+
+        function strokeRect(x, y, w, h, shade = 0) {
+            ctx.fillStyle = pal[shade];
+            x = Math.floor(x); y = Math.floor(y); w = Math.floor(w); h = Math.floor(h);
+            ctx.fillRect(x, y, w, 1);
+            ctx.fillRect(x, y + h - 1, w, 1);
+            ctx.fillRect(x, y, 1, h);
+            ctx.fillRect(x + w - 1, y, 1, h);
+        }
+
+        function drawText(text, x, y, shade = 0, scale = 1) {
+            const str = String(text).toUpperCase();
+            ctx.fillStyle = pal[shade];
+            let curX = Math.floor(x);
+            const startY = Math.floor(y);
+            for (let i = 0; i < str.length; i++) {
+                const glyph = FONT_5X5[str[i]] || FONT_5X5[' '];
+                for (let r = 0; r < 5; r++) {
+                    for (let c = 0; c < 5; c++) {
+                        if (glyph[r][c] === '1') {
+                            ctx.fillRect(curX + c * scale, startY + r * scale, scale, scale);
+                        }
+                    }
+                }
+                curX += 6 * scale;
+            }
+        }
+
+        function drawTextCentered(text, y, shade = 0, scale = 1) {
+            const str = String(text);
+            const width = str.length * 6 * scale - scale;
+            const x = Math.floor((SCREEN_W - width) / 2);
+            drawText(str, x, y, shade, scale);
+        }
+
+        // Draw an 8x8 or NxN pixel sprite from array of strings ('0'..'3' = shade, '.' = transparent)
+        function drawSprite(spriteRows, x, y, scale = 1, flipX = false) {
+            const sx = Math.floor(x);
+            const sy = Math.floor(y);
+            const h = spriteRows.length;
+            const w = spriteRows[0].length;
+            for (let r = 0; r < h; r++) {
+                const row = spriteRows[r];
+                for (let c = 0; c < w; c++) {
+                    const ch = row[flipX ? (w - 1 - c) : c];
+                    if (ch !== '.') {
+                        ctx.fillStyle = pal[parseInt(ch, 10)];
+                        ctx.fillRect(sx + c * scale, sy + r * scale, scale, scale);
+                    }
+                }
+            }
+        }
+
+        /***********************************************************************
+         * 2. SYNTHESIZED 8-BIT CHIPTUNE AUDIO ENGINE (WEB AUDIO API)
+         ***********************************************************************/
+        let audioCtx = null;
+        let audioEnabled = true;
+        let bgmStep = 0;
+        let bgmTimer = 0;
+
+        function ensureAudio() {
+            if (!audioEnabled) return false;
+            if (!audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) {
+                    audioCtx = new AudioContextClass();
+                }
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return !!audioCtx;
+        }
+
+        // Play an 8-bit square or triangle wave tone
+        function playTone(freq, duration = 0.08, type = 'square', vol = 0.06, slideTo = null) {
+            if (!ensureAudio()) return;
+            try {
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, now);
+                if (slideTo) {
+                    osc.frequency.exponentialRampToValueAtTime(slideTo, now + duration);
+                }
+                gain.gain.setValueAtTime(vol, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + duration);
+            } catch (e) {}
+        }
+
+        // Play 8-bit white noise burst (explosions, sword slashes, percussion)
+        function playNoise(duration = 0.1, vol = 0.06, bandFreq = 1000) {
+            if (!ensureAudio()) return;
+            try {
+                const now = audioCtx.currentTime;
+                const bufferSize = Math.max(1, Math.floor(audioCtx.sampleRate * duration));
+                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = bandFreq;
+
+                const gain = audioCtx.createGain();
+                gain.gain.setValueAtTime(vol, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(audioCtx.destination);
+                noise.start(now);
+            } catch (e) {}
+        }
+
+        // Iconic Game Boy Sound Effects
+        const SFX = {
+            bootDing() {
+                playTone(1046.5, 0.09, 'square', 0.08);
+                setTimeout(() => playTone(2093.0, 0.45, 'square', 0.08), 85);
+            },
+            bootError() {
+                playTone(130.8, 0.35, 'sawtooth', 0.07, 98.0);
+            },
+            cartClunk() {
+                playNoise(0.045, 0.12, 420);
+                playTone(140, 0.06, 'triangle', 0.09, 75);
+                setTimeout(() => {
+                    playNoise(0.035, 0.1, 780);
+                    playTone(210, 0.05, 'square', 0.06, 120);
+                }, 55);
+            },
+            cartEject() {
+                playNoise(0.05, 0.09, 900);
+                playTone(190, 0.06, 'triangle', 0.07, 310);
+            },
+            cursor() {
+                playTone(660, 0.04, 'square', 0.05);
+            },
+            select() {
+                playTone(523.25, 0.06, 'square', 0.07);
+                setTimeout(() => playTone(1046.5, 0.12, 'square', 0.07), 55);
+            },
+            sword() {
+                playNoise(0.07, 0.06, 1800);
+                playTone(420, 0.07, 'square', 0.04, 180);
+            },
+            hit() {
+                playNoise(0.11, 0.08, 600);
+                playTone(160, 0.1, 'sawtooth', 0.06, 70);
+            },
+            pickup() {
+                playTone(587.33, 0.06, 'square', 0.07);
+                setTimeout(() => playTone(880, 0.08, 'square', 0.07), 60);
+                setTimeout(() => playTone(1174.66, 0.14, 'square', 0.07), 120);
+            },
+            laser() {
+                playTone(1100, 0.06, 'square', 0.045, 280);
+            },
+            explosion() {
+                playNoise(0.24, 0.1, 350);
+            },
+            rotate() {
+                playTone(740, 0.04, 'triangle', 0.06, 980);
+            },
+            drop() {
+                playTone(220, 0.05, 'triangle', 0.07, 110);
+            },
+            lineClear() {
+                const notes = [523.25, 659.25, 783.99, 1046.5];
+                notes.forEach((n, idx) => {
+                    setTimeout(() => playTone(n, 0.09, 'square', 0.07), idx * 55);
+                });
+            },
+            gameOver() {
+                const notes = [440, 415.3, 392, 349.23];
+                notes.forEach((n, idx) => {
+                    setTimeout(() => playTone(n, 0.18, 'square', 0.06), idx * 140);
+                });
+            },
+            victory() {
+                const notes = [523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5];
+                const delays = [0, 100, 200, 300, 450, 580];
+                notes.forEach((n, idx) => {
+                    setTimeout(() => playTone(n, 0.14, 'square', 0.08), delays[idx]);
+                });
+            }
+        };
+
+        // Background Chiptune Sequencer per Cartridge
+        const BGM_TRACKS = {
+            MENU: [261.6, 329.6, 392.0, 523.3, 392.0, 329.6, 293.7, 349.2],
+            QUEST: [220.0, 261.6, 329.6, 220.0, 246.9, 293.7, 392.0, 293.7, 261.6, 329.6, 440.0, 329.6, 196.0, 246.9, 293.7, 246.9],
+            TETRA: [659.3, 493.9, 523.3, 587.3, 523.3, 493.9, 440.0, 440.0, 523.3, 659.3, 587.3, 523.3, 493.9, 523.3, 587.3, 659.3],
+            STAR: [164.8, 164.8, 329.6, 164.8, 196.0, 164.8, 220.0, 246.9, 146.8, 146.8, 293.7, 146.8, 174.6, 146.8, 196.0, 220.0],
+            SNAKE: [329.6, 392.0, 440.0, 392.0, 523.3, 440.0, 392.0, 329.6],
+            RACE: [196.0, 196.0, 293.7, 392.0, 261.6, 261.6, 329.6, 440.0, 220.0, 293.7, 349.2, 440.0, 246.9, 329.6, 392.0, 493.9]
+        };
+
+        function updateBGM(activeCart, isPlayingState) {
+            if (!powerOn || !audioEnabled || !isPlayingState) return;
+            bgmTimer++;
+            const tempo = (activeCart === 'STAR' || activeCart === 'RACE') ? 8 : (activeCart === 'TETRA' ? 11 : 13);
+            if (bgmTimer >= tempo) {
+                bgmTimer = 0;
+                const track = BGM_TRACKS[activeCart] || BGM_TRACKS.MENU;
+                const freq = track[bgmStep % track.length];
+                bgmStep++;
+                if (freq) {
+                    playTone(freq, 0.07, (activeCart === 'STAR' || activeCart === 'RACE') ? 'triangle' : 'square', 0.022);
+                }
+            }
+        }
+
+        /***********************************************************************
+         * 3. INPUT CONTROLLER (KEYBOARD + MULTI-TOUCH / MOUSE)
+         ***********************************************************************/
+        const keys = {
+            UP: false,
+            DOWN: false,
+            LEFT: false,
+            RIGHT: false,
+            A: false,
+            B: false,
+            START: false,
+            SELECT: false
+        };
+
+        const justPressed = {
+            UP: false,
+            DOWN: false,
+            LEFT: false,
+            RIGHT: false,
+            A: false,
+            B: false,
+            START: false,
+            SELECT: false
+        };
+
+        function setKeyState(keyName, isDown) {
+            if (isDown && !keys[keyName]) {
+                justPressed[keyName] = true;
+                ensureAudio();
+            }
+            keys[keyName] = isDown;
+
+            // Update visual button active state
+            const btnMap = {
+                UP: 'btn-up',
+                DOWN: 'btn-down',
+                LEFT: 'btn-left',
+                RIGHT: 'btn-right',
+                A: 'btn-a',
+                B: 'btn-b',
+                START: 'btn-start',
+                SELECT: 'btn-select'
+            };
+            const el = document.getElementById(btnMap[keyName]);
+            if (el) {
+                el.classList.toggle('active', isDown);
+            }
+        }
+
+        function clearJustPressed() {
+            for (const k in justPressed) {
+                justPressed[k] = false;
+            }
+        }
+
+        // Keyboard Listeners
+        const KEY_MAP = {
+            'ArrowUp': 'UP', 'KeyW': 'UP',
+            'ArrowDown': 'DOWN', 'KeyS': 'DOWN',
+            'ArrowLeft': 'LEFT', 'KeyA': 'LEFT',
+            'ArrowRight': 'RIGHT', 'KeyD': 'RIGHT',
+            'KeyX': 'A', 'KeyK': 'A', 'Space': 'A',
+            'KeyZ': 'B', 'KeyJ': 'B',
+            'Enter': 'START',
+            'ShiftLeft': 'SELECT', 'ShiftRight': 'SELECT'
+        };
+
+        window.addEventListener('keydown', (e) => {
+            const mapped = KEY_MAP[e.code];
+            if (mapped) {
+                e.preventDefault();
+                setKeyState(mapped, true);
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            const mapped = KEY_MAP[e.code];
+            if (mapped) {
+                e.preventDefault();
+                setKeyState(mapped, false);
+            }
+        });
+
+        // On-Screen Tactile Button Listeners (Pointer Events for Mouse & Touch)
+        document.querySelectorAll('[data-key]').forEach(btn => {
+            const k = btn.getAttribute('data-key');
+            btn.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                btn.setPointerCapture(e.pointerId);
+                setKeyState(k, true);
+            });
+            btn.addEventListener('pointerup', (e) => {
+                e.preventDefault();
+                setKeyState(k, false);
+            });
+            btn.addEventListener('pointercancel', () => setKeyState(k, false));
+            btn.addEventListener('lostpointercapture', () => setKeyState(k, false));
+        });
+
+        /***********************************************************************
+         * 4. HARDWARE SHELL & TOOLBAR ACTIONS
+         ***********************************************************************/
+        function cyclePalette() {
+            currentPaletteIdx = (currentPaletteIdx + 1) % PALETTES.length;
+            pal = PALETTES[currentPaletteIdx].colors;
+            document.getElementById('palette-label').textContent = PALETTES[currentPaletteIdx].name;
+            document.getElementById('palette-dot').style.backgroundColor = pal[2];
+            SFX.cursor();
+        }
+
+        function toggleLcdGrid() {
+            lcdGridOn = !lcdGridOn;
+            document.getElementById('lcd-grid').style.display = lcdGridOn ? 'block' : 'none';
+            document.getElementById('grid-btn').textContent = `LCD Grid: ${lcdGridOn ? 'ON' : 'OFF'}`;
+            SFX.cursor();
+        }
+
+        function toggleAudio() {
+            audioEnabled = !audioEnabled;
+            document.getElementById('audio-icon').textContent = audioEnabled ? '🔊' : '🔇';
+            document.getElementById('audio-label').textContent = audioEnabled ? '8-Bit Audio' : 'Muted';
+            if (audioEnabled) SFX.select();
+        }
+
+        function cycleShell() {
+            const shell = document.getElementById('gb-shell');
+            if (SHELL_CLASSES[shellIdx]) shell.classList.remove(SHELL_CLASSES[shellIdx]);
+            shellIdx = (shellIdx + 1) % SHELL_CLASSES.length;
+            if (SHELL_CLASSES[shellIdx]) shell.classList.add(SHELL_CLASSES[shellIdx]);
+            SFX.cursor();
+        }
+
+        function togglePower() {
+            powerOn = !powerOn;
+            const led = document.getElementById('battery-led');
+            const pill = document.getElementById('power-switch-pill');
+            led.classList.toggle('on', powerOn);
+            pill.style.transform = powerOn ? 'translateX(0px)' : 'translateX(-6px)';
+            pill.className = `w-2.5 h-2.5 rounded-full transition-transform ${powerOn ? 'bg-emerald-600' : 'bg-rose-600'}`;
+            if (powerOn) {
+                startBootSequence(insertedCartId || 'NOCART');
+            }
+        }
+
+        /***********************************************************************
+         * 5. PHYSICAL CARTRIDGE RACK, TOP-SLOT ANIMATION & BOOT SYSTEM
+         ***********************************************************************/
+        let currentCart = 'BOOT'; // 'BOOT', 'NOCART', 'MENU', 'QUEST', 'TETRA', 'STAR', 'SNAKE', 'RACE'
+        let insertedCartId = 'MENU'; // Physical cartridge currently inside the top slot (or null if ejected)
+        let bootTargetCart = 'MENU';
+        let bootY = -16;
+        let bootTimer = 0;
+        let bootDingPlayed = false;
+        let activeRackFilter = 'ALL';
+
+        let menuCursor = 0;
+        let menuAnimTick = 0;
+
+        // 6 Physical Game Paks for the Website Cartridge Rack
+        const PHYSICAL_CARTRIDGES = [
+            {
+                id: 'MENU',
+                code: 'DMG-5IN1-GLD',
+                title: 'GEMINI 5-IN-1',
+                subtitle: 'GOLD MULTICART',
+                genre: 'MULTI-GAME ANTHOLOGY',
+                category: 'ARCADE',
+                shellClass: 'cart-shell-gold',
+                stickerGrad: 'from-amber-500 via-orange-600 to-indigo-900',
+                badgeText: '5-IN-1 GOLD',
+                desc: 'The ultimate golden collector multicart! Boots into an interactive 5-in-1 game selector menu with instant access to every game in the library.',
+                artSvg: `<svg viewBox="0 0 80 42" class="w-full h-full"><rect width="80" height="42" fill="#1e1b4b"/><circle cx="40" cy="21" r="16" fill="#f59e0b" opacity="0.25"/><path d="M22 30 L30 12 L40 25 L50 12 L58 30 Z" fill="#fbbf24" stroke="#fff" stroke-width="1.5"/><text x="40" y="37" text-anchor="middle" fill="#fde68a" font-size="6" font-family="monospace" font-weight="bold">5-IN-1 SUPER PAK</text></svg>`
+            },
+            {
+                id: 'QUEST',
+                code: 'DMG-PQ-01',
+                title: 'PIXEL QUEST',
+                subtitle: "DRAGON'S LAIR",
+                genre: 'ACTION RPG DUNGEON',
+                category: 'ACTION',
+                shellClass: 'cart-shell-grey',
+                stickerGrad: 'from-emerald-700 via-teal-800 to-slate-900',
+                badgeText: 'RPG SAVER',
+                desc: 'Explore a 4-chamber interconnected dungeon! Press A to slash your sword, B to dash, collect keys to unlock doors, and slay the Dragon Boss!',
+                artSvg: `<svg viewBox="0 0 80 42" class="w-full h-full"><rect width="80" height="42" fill="#064e3b"/><path d="M12 34 L28 16 L42 28 L60 10 L72 34 Z" fill="#047857"/><line x1="40" y1="6" x2="40" y2="30" stroke="#fde047" stroke-width="3"/><line x1="33" y1="22" x2="47" y2="22" stroke="#f59e0b" stroke-width="2.5"/><rect x="38" y="30" width="4" height="6" fill="#b45309"/></svg>`
+            },
+            {
+                id: 'TETRA',
+                code: 'DMG-TB-89',
+                title: "TETRA BLOCK '89",
+                subtitle: 'MOSCOW PUZZLE',
+                genre: 'CLASSIC BLOCK PUZZLE',
+                category: 'ARCADE',
+                shellClass: 'cart-shell-grey',
+                stickerGrad: 'from-rose-700 via-purple-800 to-indigo-950',
+                badgeText: 'PUZZLE HIT',
+                desc: 'Stack falling tetrominoes! Use LEFT/RIGHT to shift, A/B to rotate, DOWN for soft drop, and UP for instant hard drop. Clear lines to level up!',
+                artSvg: `<svg viewBox="0 0 80 42" class="w-full h-full"><rect width="80" height="42" fill="#311042"/><g stroke="#fff" stroke-width="1"><rect x="20" y="10" width="9" height="9" fill="#f43f5e"/><rect x="29" y="10" width="9" height="9" fill="#f43f5e"/><rect x="38" y="10" width="9" height="9" fill="#f43f5e"/><rect x="29" y="19" width="9" height="9" fill="#f43f5e"/><rect x="46" y="19" width="9" height="9" fill="#38bdf8"/><rect x="55" y="19" width="9" height="9" fill="#38bdf8"/><rect x="46" y="28" width="9" height="9" fill="#38bdf8"/><rect x="55" y="28" width="9" height="9" fill="#38bdf8"/></g></svg>`
+            },
+            {
+                id: 'STAR',
+                code: 'DMG-SB-02',
+                title: 'STAR BLASTER',
+                subtitle: 'GALAXY DEFENDER',
+                genre: 'VERTICAL SHOOTER',
+                category: 'ACTION',
+                shellClass: 'cart-shell-blue',
+                stickerGrad: 'from-blue-600 via-indigo-900 to-slate-950',
+                badgeText: 'TWIN LASER',
+                desc: 'Pilot the Gemini Starfighter! Hold A to fire twin plasma lasers, press B to detonate a Nova Bomb, and destroy alien Dreadnoughts!',
+                artSvg: `<svg viewBox="0 0 80 42" class="w-full h-full"><rect width="80" height="42" fill="#090d16"/><circle cx="18" cy="12" r="1" fill="#fff"/><circle cx="65" cy="18" r="1.2" fill="#fff"/><circle cx="52" cy="8" r="1" fill="#38bdf8"/><polygon points="40,6 28,32 40,26 52,32" fill="#e2e8f0" stroke="#38bdf8" stroke-width="1.5"/><line x1="33" y1="14" x2="33" y2="4" stroke="#f43f5e" stroke-width="2"/><line x1="47" y1="14" x2="47" y2="4" stroke="#f43f5e" stroke-width="2"/></svg>`
+            },
+            {
+                id: 'SNAKE',
+                code: 'DMG-SN-03',
+                title: 'SNAKE GB DX',
+                subtitle: 'VIPER EDITION',
+                genre: 'RETRO ARCADE',
+                category: 'ARCADE',
+                shellClass: 'cart-shell-yellow',
+                stickerGrad: 'from-lime-600 via-emerald-700 to-green-950',
+                badgeText: 'TURBO VIPER',
+                desc: 'Guide the hungry pixel snake! Eat apples to grow longer, hold A to slither at turbo speed, and grab flashing Golden Bugs for 5x points!',
+                artSvg: `<svg viewBox="0 0 80 42" class="w-full h-full"><rect width="80" height="42" fill="#052e16"/><path d="M16 28 H34 V16 H52 V24 H64" fill="none" stroke="#4ade80" stroke-width="6" stroke-linecap="square"/><circle cx="64" cy="24" r="4" fill="#facc15"/><circle cx="22" cy="14" r="4" fill="#ef4444"/></svg>`
+            },
+            {
+                id: 'RACE',
+                code: 'DMG-TR-04',
+                title: 'TURBO RACER GB',
+                subtitle: 'GRAND PRIX F-1',
+                genre: 'HIGHWAY RACING',
+                category: 'ACTION',
+                shellClass: 'cart-shell-red',
+                stickerGrad: 'from-red-600 via-orange-600 to-zinc-900',
+                badgeText: 'NEW GAME!',
+                desc: 'Steer your F-1 Turbo Car down a 3-lane highway! Hold A for Nitro Boost, B to brake, dodge traffic & oil slicks, and clear Checkpoints!',
+                artSvg: `<svg viewBox="0 0 80 42" class="w-full h-full"><rect width="80" height="42" fill="#18181b"/><polygon points="30,4 50,4 68,42 12,42" fill="#3f3f46"/><line x1="40" y1="6" x2="40" y2="40" stroke="#facc15" stroke-width="2" stroke-dasharray="4 3"/><rect x="33" y="18" width="14" height="18" rx="2" fill="#ef4444" stroke="#fff" stroke-width="1"/><rect x="30" y="20" width="3" height="5" fill="#000"/><rect x="47" y="20" width="3" height="5" fill="#000"/><rect x="30" y="30" width="3" height="5" fill="#000"/><rect x="47" y="30" width="3" height="5" fill="#000"/></svg>`
+            }
+        ];
+
+        // The 5 playable games inside the 5-in-1 Multicart menu
+        const CARTRIDGES = PHYSICAL_CARTRIDGES.filter(c => c.id !== 'MENU');
+
+        function renderCartridgeRack() {
+            const grid = document.getElementById('cartridge-rack-grid');
+            if (!grid) return;
+            const list = activeRackFilter === 'ALL'
+                ? PHYSICAL_CARTRIDGES
+                : PHYSICAL_CARTRIDGES.filter(c => c.category === activeRackFilter);
+
+            grid.innerHTML = list.map(cart => {
+                const isInserted = (insertedCartId === cart.id);
+                const hiScore = cart.id === 'MENU' ? '5 GAMES' : `HI: ${highScores[cart.id] || 0}`;
+                return `
+                    <div onclick="insertCartridgeFromRack('${cart.id}')"
+                         class="gb-cartridge ${cart.shellClass} ${isInserted ? 'inserted-active' : ''} p-2.5 flex flex-col justify-between cursor-pointer select-none h-[164px]">
+                        
+                        <!-- Top Grip Ribs & Recessed GEMINI GAME BOY Header -->
+                        <div class="w-full flex items-center justify-between gap-1 mb-1.5">
+                            <div class="w-4 h-5 cart-ribs rounded-xs"></div>
+                            <div class="flex-1 h-5 rounded-full bg-black/25 shadow-inner flex items-center justify-center border border-white/20 px-1">
+                                <span class="text-[7px] font-black tracking-widest text-white/90 truncate">GEMINI GAME BOY</span>
+                            </div>
+                            <div class="w-4 h-5 cart-ribs rounded-xs"></div>
+                        </div>
+
+                        <!-- Recessed Center Sticker Label -->
+                        <div class="w-full flex-1 bg-slate-950 rounded p-1.5 border border-white/40 shadow-inner flex flex-col justify-between overflow-hidden relative">
+                            <!-- Top Sticker Stripe -->
+                            <div class="flex items-center justify-between gap-1 z-10">
+                                <span class="text-[7px] font-mono font-bold px-1 py-0.2 rounded bg-black/60 text-white/90">${cart.code}</span>
+                                <span class="text-[7px] font-extrabold px-1 rounded bg-white/90 text-slate-900">${cart.badgeText}</span>
+                            </div>
+
+                            <!-- Vector Artwork Banner -->
+                            <div class="w-full h-11 my-0.5 rounded overflow-hidden border border-white/15">
+                                ${cart.artSvg}
+                            </div>
+
+                            <!-- Cartridge Title & Subtitle -->
+                            <div class="z-10 leading-tight">
+                                <div class="text-[9px] font-black text-white tracking-tight truncate">${cart.title}</div>
+                                <div class="flex items-center justify-between text-[7px] text-slate-300 font-mono mt-0.5">
+                                    <span class="truncate">${cart.subtitle}</span>
+                                    <span class="text-emerald-300 font-bold">${hiScore}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bottom Insertion Indicator Triangle & Status -->
+                        <div class="w-full flex items-center justify-between px-1 pt-1.5">
+                            <span class="text-[8px] font-extrabold uppercase tracking-wider ${isInserted ? 'text-emerald-950 bg-emerald-300 px-1.5 py-0.2 rounded' : 'text-black/70'}">
+                                ${isInserted ? '● INSERTED' : '▼ INSERT PAK'}
+                            </span>
+                            <span class="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[6px] border-t-black/50"></span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterCartRack(category) {
+            activeRackFilter = category;
+            ['ALL', 'ACTION', 'ARCADE'].forEach(cat => {
+                const btn = document.getElementById('filter-' + cat);
+                if (btn) {
+                    btn.className = (cat === category)
+                        ? 'px-2.5 py-1 rounded-lg font-semibold bg-emerald-600 text-white transition'
+                        : 'px-2 py-1 rounded-lg font-semibold text-slate-400 hover:text-white transition';
+                }
+            });
+            SFX.cursor();
+            renderCartridgeRack();
+        }
+
+        function updateTopSlotVisual(cartObj, stateClass) {
+            const slotEl = document.getElementById('top-slot-cart');
+            const codeEl = document.getElementById('top-slot-code');
+            const stickerEl = document.getElementById('top-slot-sticker');
+            const headerLabel = document.getElementById('header-cart-label');
+            const dotEl = document.getElementById('slot-status-dot');
+
+            if (!slotEl) return;
+
+            // Remove old shell classes
+            slotEl.classList.remove('cart-shell-gold', 'cart-shell-grey', 'cart-shell-blue', 'cart-shell-yellow', 'cart-shell-red', 'ejected', 'inserting', 'seated');
+
+            if (!cartObj) {
+                slotEl.classList.add('cart-shell-grey', 'ejected');
+                if (headerLabel) headerLabel.textContent = 'NO CARTRIDGE';
+                if (dotEl) dotEl.className = 'w-2 h-2 rounded-full bg-rose-500';
+                return;
+            }
+
+            slotEl.classList.add(cartObj.shellClass, stateClass);
+            if (codeEl) codeEl.textContent = cartObj.code;
+            if (stickerEl) stickerEl.className = `w-[88%] h-2.5 mt-1 rounded-t-xs bg-gradient-to-r ${cartObj.stickerGrad} border-t border-x border-white/50`;
+            if (headerLabel) headerLabel.textContent = cartObj.code;
+            if (dotEl) dotEl.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+        }
+
+        function insertCartridgeFromRack(cartId) {
+            const cartObj = PHYSICAL_CARTRIDGES.find(c => c.id === cartId);
+            if (!cartObj) return;
+
+            ensureAudio();
+            insertedCartId = cartId;
+            renderCartridgeRack();
+
+            // Animate eject & snap-in on top of the Game Boy shell
+            updateTopSlotVisual(cartObj, 'inserting');
+            setTimeout(() => {
+                SFX.cartClunk();
+                updateTopSlotVisual(cartObj, 'seated');
+            }, 90);
+
+            if (!powerOn) {
+                togglePower();
+            } else {
+                startBootSequence(cartId);
+            }
+        }
+
+        function ejectCartridge() {
+            if (!insertedCartId) return;
+            ensureAudio();
+            SFX.cartEject();
+            insertedCartId = null;
+            updateTopSlotVisual(null, 'ejected');
+            renderCartridgeRack();
+            document.getElementById('active-cart-badge').textContent = 'EMPTY';
+            updateManualPanel('NOCART');
+            if (powerOn) {
+                startBootSequence('NOCART');
+            }
+        }
+
+        function rebootCurrentCartridge() {
+            SFX.select();
+            if (!powerOn) {
+                togglePower();
+            } else {
+                startBootSequence(insertedCartId || 'NOCART');
+            }
+        }
+
+        function startBootSequence(targetCart = insertedCartId || 'NOCART') {
+            currentCart = 'BOOT';
+            bootTargetCart = targetCart;
+            bootY = -14;
+            bootTimer = 0;
+            bootDingPlayed = false;
+            updateManualPanel(targetCart);
+        }
+
+        function switchCartridge(cartId) {
+            if (!powerOn) togglePower();
+            SFX.select();
+            bgmStep = 0;
+            currentCart = cartId;
+            updateManualPanel(cartId);
+
+            document.getElementById('active-cart-badge').textContent =
+                cartId === 'MENU' ? '5-IN-1' : (cartId === 'NOCART' ? 'EMPTY' : cartId);
+
+            if (cartId === 'QUEST') initPixelQuest();
+            if (cartId === 'TETRA') initTetraBlock();
+            if (cartId === 'STAR') initStarBlaster();
+            if (cartId === 'SNAKE') initSnakeGB();
+            if (cartId === 'RACE') initTurboRacer();
+        }
+
+        function updateManualPanel(cartId) {
+            const codeEl = document.getElementById('manual-code');
+            const titleEl = document.getElementById('manual-title');
+            const descEl = document.getElementById('manual-desc');
+            if (cartId === 'NOCART') {
+                if (codeEl) codeEl.textContent = 'SLOT-1 EMPTY';
+                titleEl.textContent = 'NO CARTRIDGE';
+                descEl.innerHTML = 'No Game Pak is inserted in Slot-1! Click any of the <strong>6 physical Game Boy cartridges</strong> in the rack above to slide it into the console.';
+                return;
+            }
+            const info = PHYSICAL_CARTRIDGES.find(c => c.id === cartId) || PHYSICAL_CARTRIDGES[0];
+            if (info) {
+                if (codeEl) codeEl.textContent = info.code;
+                titleEl.textContent = info.title;
+                descEl.textContent = info.desc;
+            }
+        }
+
+        // Update & Render Boot Sequence (Supports both Valid Cartridges & Ejected Lockout Screen)
+        function updateAndDrawBoot() {
+            clearScreen(3);
+            if (bootY < 60) {
+                bootY += 1.3;
+            } else {
+                if (!bootDingPlayed) {
+                    bootDingPlayed = true;
+                    if (bootTargetCart === 'NOCART') {
+                        SFX.bootError();
+                    } else {
+                        SFX.bootDing();
+                    }
+                }
+                bootTimer++;
+                if (bootTargetCart !== 'NOCART' && (bootTimer > 58 || justPressed.A || justPressed.START)) {
+                    switchCartridge(bootTargetCart);
+                    return;
+                }
+            }
+
+            const y = Math.floor(bootY);
+            if (bootTargetCart === 'NOCART') {
+                // Classic No-Cartridge Garbled Black Rectangle Lockout
+                fillRect(32, y - 2, 96, 14, 0);
+                for (let gx = 36; gx < 124; gx += 6) {
+                    fillRect(gx, y + 1, 3, 8, (gx % 12 === 0) ? 1 : 0);
+                }
+                if (bootDingPlayed) {
+                    drawTextCentered('NO GAME PAK', y + 24, 1, 1);
+                    drawTextCentered('INSERT CARTRIDGE', y + 34, 2, 1);
+                }
+            } else {
+                // Classic Boxed Drop Logo
+                fillRect(30, y - 4, 100, 19, 0);
+                fillRect(32, y - 2, 96, 15, 3);
+                drawTextCentered('GEMINI BOY', y + 2, 0, 1);
+                if (bootDingPlayed) {
+                    const pak = PHYSICAL_CARTRIDGES.find(c => c.id === bootTargetCart);
+                    drawTextCentered(pak ? pak.code : 'TM 1989-2026', y + 22, 1, 1);
+                }
+            }
+        }
+
+        // Mini 8x8 Icons for the 5-in-1 Menu
+        const MENU_ICONS = [
+            // Sword Icon (Pixel Quest)
+            [
+                '......00',
+                '.....020',
+                '....020.',
+                '.0.020..',
+                '..000...',
+                '.0100...',
+                '01.0....',
+                '0.......'
+            ],
+            // Tetromino Icon (Tetra Block)
+            [
+                '000000..',
+                '022020..',
+                '000000..',
+                '..000000',
+                '..020220',
+                '..000000',
+                '........',
+                '........'
+            ],
+            // Spaceship Icon (Star Blaster)
+            [
+                '...00...',
+                '..0220..',
+                '..0220..',
+                '.001100.',
+                '02011020',
+                '00000000',
+                '.0....0.',
+                '........'
+            ],
+            // Snake Icon (Snake GB)
+            [
+                '.00000..',
+                '020220..',
+                '022200..',
+                '.000....',
+                '..02000.',
+                '...00020',
+                '....020.',
+                '........'
+            ],
+            // Race Car Icon (Turbo Racer GB)
+            [
+                '..0000..',
+                '00122100',
+                '00133100',
+                '..0220..',
+                '00122100',
+                '00100100',
+                '..0000..',
+                '........'
+            ]
+        ];
+
+        function updateAndDrawMenu() {
+            menuAnimTick++;
+            updateBGM('MENU', true);
+
+            if (justPressed.UP) {
+                menuCursor = (menuCursor + CARTRIDGES.length - 1) % CARTRIDGES.length;
+                SFX.cursor();
+            }
+            if (justPressed.DOWN) {
+                menuCursor = (menuCursor + 1) % CARTRIDGES.length;
+                SFX.cursor();
+            }
+            if (justPressed.A || justPressed.START) {
+                switchCartridge(CARTRIDGES[menuCursor].id);
+                return;
+            }
+
+            clearScreen(3);
+
+            // Top Banner
+            fillRect(0, 0, SCREEN_W, 20, 0);
+            fillRect(2, 2, SCREEN_W - 4, 16, 1);
+            drawTextCentered('GEMINI 5-IN-1 GOLD', 4, 3, 1);
+            drawTextCentered('SELECT GAME PAK', 11, 2, 1);
+
+            // Game List Box (5 games, 18px each)
+            strokeRect(5, 22, 150, 94, 0);
+            fillRect(7, 24, 146, 90, 2);
+
+            for (let i = 0; i < CARTRIDGES.length; i++) {
+                const rowY = 26 + i * 17;
+                const isSelected = (i === menuCursor);
+
+                if (isSelected) {
+                    fillRect(9, rowY, 142, 15, 0);
+                    if (Math.floor(menuAnimTick / 15) % 2 === 0) {
+                        drawText('>', 12, rowY + 5, 3, 1);
+                    }
+                    drawSprite(MENU_ICONS[i], 20, rowY + 3, 1);
+                    drawText(CARTRIDGES[i].title.slice(0, 14), 31, rowY + 2, 3, 1);
+                    drawText('HI:' + (highScores[CARTRIDGES[i].id] || 0), 31, rowY + 9, 2, 1);
+                } else {
+                    fillRect(9, rowY, 142, 15, 3);
+                    drawSprite(MENU_ICONS[i], 20, rowY + 3, 1);
+                    drawText(CARTRIDGES[i].title.slice(0, 15), 31, rowY + 5, 0, 1);
+                }
+            }
+
+            // Bottom Footer
+            fillRect(5, 118, 150, 22, 0);
+            drawTextCentered(CARTRIDGES[menuCursor].genre, 121, 3, 1);
+            if (Math.floor(menuAnimTick / 25) % 2 === 0) {
+                drawTextCentered('PRESS START OR A', 130, 2, 1);
+            }
+        }
+
+        /***********************************************************************
+         * 6. GAME 1: PIXEL QUEST (Zelda / Pokemon Dungeon Crawler)
+         *    - 4 Interconnected Dungeon Rooms (Room 0..3)
+         *    - Player with 4-way movement, Sword Slash (A), Dash (B)
+         *    - Slimes, Bats, Dark Knights, Boss Dragon, Keys, Locked Doors, Hearts, Chalice
+         ***********************************************************************/
+        const SPRITE_HERO_DOWN = [
+            '..0000..',
+            '.022220.',
+            '.002200.',
+            '.023320.',
+            '..0110..',
+            '.012210.',
+            '.0.00.0.',
+            '..0..0..'
+        ];
+        const SPRITE_HERO_UP = [
+            '..0000..',
+            '.011110.',
+            '.022220.',
+            '.011110.',
+            '..0110..',
+            '.012210.',
+            '.0.00.0.',
+            '..0..0..'
+        ];
+        const SPRITE_HERO_SIDE = [
+            '..0000..',
+            '.022220.',
+            '.022000.',
+            '..03320.',
+            '..0110..',
+            '.012210.',
+            '..0000..',
+            '..0..0..'
+        ];
+        const SPRITE_SLIME = [
+            '........',
+            '..0000..',
+            '.022220.',
+            '02022020',
+            '02222220',
+            '01111110',
+            '.000000.',
+            '........'
+        ];
+        const SPRITE_KNIGHT = [
+            '.000000.',
+            '01222210',
+            '01022010',
+            '01111110',
+            '.012210.',
+            '00111100',
+            '0.0000.0',
+            '..0..0..'
+        ];
+        const SPRITE_BOSS = [
+            '.00..00.',
+            '01100110',
+            '02011020',
+            '01133110',
+            '.011110.',
+            '00122100',
+            '01000010',
+            '0.0..0.0'
+        ];
+        const SPRITE_KEY = [
+            '...000..',
+            '..03.30.',
+            '...000..',
+            '....0...',
+            '....00..',
+            '....0...',
+            '....00..',
+            '........'
+        ];
+        const SPRITE_HEART = [
+            '.00..00.',
+            '02200220',
+            '02322220',
+            '02222220',
+            '.022220.',
+            '..0220..',
+            '...00...',
+            '........'
+        ];
+        const SPRITE_CHALICE = [
+            '.000000.',
+            '03233230',
+            '02333320',
+            '.023320.',
+            '..0220..',
+            '...00...',
+            '.002200.',
+            '00000000'
+        ];
+
+        let pq = {};
+
+        function initPixelQuest() {
+            // 4 rooms arranged in a 2x2 grid:
+            // Room 0 (Top-Left: Entrance) -> Right to Room 1 (Armory)
+            // Room 0 -> Down to Room 2 (Crypt) -> Right to Room 3 (Dragon Boss Lair)
+            pq = {
+                state: 'PLAY', // 'PLAY', 'WIN', 'GAMEOVER'
+                room: 0,
+                level: 1,
+                score: 0,
+                BannerTimer: 60,
+                player: {
+                    x: 76,
+                    y: 80,
+                    dir: 'DOWN', // UP, DOWN, LEFT, RIGHT
+                    hp: 6,
+                    maxHp: 6,
+                    keys: 0,
+                    attackTimer: 0,
+                    invuln: 0,
+                    dashTimer: 0
+                },
+                rooms: buildQuestDungeon(1)
+            };
+        }
+
+        function buildQuestDungeon(dungeonLvl) {
+            // Each room is 20x15 tiles (8x8px each), top 3 rows (24px) reserved for HUD
+            // So playable arena is y: 24..144 (15 rows), x: 0..160 (20 cols)
+            return [
+                // Room 0: Entrance Hall (Exits: Right, Down)
+                {
+                    name: 'ENTRANCE HALL',
+                    exits: { RIGHT: 1, DOWN: 2 },
+                    locked: { DOWN: true },
+                    blocks: [
+                        { x: 32, y: 48, w: 16, h: 16 },
+                        { x: 112, y: 48, w: 16, h: 16 },
+                        { x: 32, y: 104, w: 16, h: 16 },
+                        { x: 112, y: 104, w: 16, h: 16 }
+                    ],
+                    enemies: [
+                        { type: 'SLIME', x: 56, y: 60, vx: 0.5, vy: 0.4, hp: 2, maxHp: 2, hurt: 0 },
+                        { type: 'SLIME', x: 96, y: 96, vx: -0.5, vy: 0.5, hp: 2, maxHp: 2, hurt: 0 }
+                    ],
+                    items: []
+                },
+                // Room 1: Eastern Armory (Exits: Left) - Holds Key for Room 0's South Door!
+                {
+                    name: 'EAST ARMORY',
+                    exits: { LEFT: 0 },
+                    locked: {},
+                    blocks: [
+                        { x: 72, y: 64, w: 16, h: 32 }
+                    ],
+                    enemies: [
+                        { type: 'SLIME', x: 48, y: 52, vx: 0.6, vy: 0.4, hp: 2, maxHp: 2, hurt: 0 },
+                        { type: 'KNIGHT', x: 112, y: 80, vx: -0.45, vy: 0.45, hp: 4, maxHp: 4, hurt: 0 },
+                        { type: 'SLIME', x: 108, y: 112, vx: 0.5, vy: -0.5, hp: 2, maxHp: 2, hurt: 0 }
+                    ],
+                    items: [
+                        { type: 'KEY', x: 128, y: 80 },
+                        { type: 'HEART', x: 40, y: 116 }
+                    ]
+                },
+                // Room 2: Catacombs (Exits: Up, Right) - Holds Key to Boss Room!
+                {
+                    name: 'CATACOMBS',
+                    exits: { UP: 0, RIGHT: 3 },
+                    locked: { RIGHT: true },
+                    blocks: [
+                        { x: 48, y: 56, w: 64, h: 12 },
+                        { x: 48, y: 100, w: 64, h: 12 }
+                    ],
+                    enemies: [
+                        { type: 'KNIGHT', x: 32, y: 80, vx: 0.55, vy: 0.4, hp: 4, maxHp: 4, hurt: 0 },
+                        { type: 'KNIGHT', x: 116, y: 80, vx: -0.5, vy: 0.5, hp: 4, maxHp: 4, hurt: 0 },
+                        { type: 'SLIME', x: 80, y: 120, vx: 0.7, vy: 0.3, hp: 2, maxHp: 2, hurt: 0 }
+                    ],
+                    items: [
+                        { type: 'KEY', x: 80, y: 80 },
+                        { type: 'HEART', x: 24, y: 120 }
+                    ]
+                },
+                // Room 3: Dragon Boss Lair (Exits: Left)
+                {
+                    name: 'DRAGON SANCTUM',
+                    exits: { LEFT: 2 },
+                    locked: {},
+                    blocks: [
+                        { x: 40, y: 48, w: 12, h: 12 },
+                        { x: 108, y: 48, w: 12, h: 12 },
+                        { x: 40, y: 112, w: 12, h: 12 },
+                        { x: 108, y: 112, w: 12, h: 12 }
+                    ],
+                    enemies: [
+                        { type: 'BOSS', x: 104, y: 76, vx: 0.55, vy: 0.55, hp: 8 + dungeonLvl * 2, maxHp: 8 + dungeonLvl * 2, hurt: 0, fireTimer: 0 }
+                    ],
+                    items: []
+                }
+            ];
+        }
+
+        function rectOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
+            return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+        }
+
+        function updateAndDrawPixelQuest() {
+            if (justPressed.SELECT) {
+                switchCartridge('MENU');
+                return;
+            }
+
+            if (pq.state !== 'PLAY') {
+                clearScreen(3);
+                fillRect(14, 28, 132, 88, 0);
+                fillRect(16, 30, 128, 84, 2);
+                drawTextCentered(pq.state === 'WIN' ? 'QUEST COMPLETE!' : 'YOU FELL...', 42, 0, 1);
+                drawSprite(pq.state === 'WIN' ? SPRITE_CHALICE : SPRITE_HERO_DOWN, 72, 56, 2);
+                drawTextCentered('SCORE: ' + pq.score, 80, 0, 1);
+                drawTextCentered('PRESS A OR START', 96, 3, 1);
+                if (justPressed.A || justPressed.START) {
+                    if (pq.state === 'WIN') {
+                        // Next Dungeon Floor with higher difficulty!
+                        pq.level++;
+                        pq.state = 'PLAY';
+                        pq.room = 0;
+                        pq.player.x = 76;
+                        pq.player.y = 80;
+                        pq.player.hp = pq.player.maxHp;
+                        pq.rooms = buildQuestDungeon(pq.level);
+                        SFX.select();
+                    } else {
+                        initPixelQuest();
+                    }
+                }
+                return;
+            }
+
+            updateBGM('QUEST', true);
+
+            const p = pq.player;
+            const rm = pq.rooms[pq.room];
+
+            // Movement & Dash
+            if (justPressed.B && p.dashTimer === 0) {
+                p.dashTimer = 10;
+                SFX.cursor();
+            }
+            const spd = p.dashTimer > 0 ? 2.4 : 1.25;
+            if (p.dashTimer > 0) p.dashTimer--;
+
+            let dx = 0, dy = 0;
+            if (keys.UP) { dy = -spd; p.dir = 'UP'; }
+            else if (keys.DOWN) { dy = spd; p.dir = 'DOWN'; }
+            if (keys.LEFT) { dx = -spd; p.dir = 'LEFT'; }
+            else if (keys.RIGHT) { dx = spd; p.dir = 'RIGHT'; }
+
+            // Sword Attack (A Button)
+            if (justPressed.A && p.attackTimer === 0) {
+                p.attackTimer = 14;
+                SFX.sword();
+            }
+            if (p.attackTimer > 0) p.attackTimer--;
+            if (p.invuln > 0) p.invuln--;
+
+            // Apply Movement & Obstacle Collision
+            const tryMove = (nx, ny) => {
+                // Check interior obstacles
+                for (const b of rm.blocks) {
+                    if (rectOverlap(nx, ny, 8, 8, b.x, b.y, b.w, b.h)) return false;
+                }
+                // Check outer walls (8px border around 0..160, 24..144) except open doorways
+                const inHorizDoor = (ny >= 74 && ny <= 88);
+                const inVertDoor = (nx >= 72 && nx <= 84);
+
+                if (nx < 8) {
+                    if (rm.exits.LEFT !== undefined && inHorizDoor && !rm.locked.LEFT) return true;
+                    return false;
+                }
+                if (nx + 8 > 152) {
+                    if (rm.exits.RIGHT !== undefined && inHorizDoor && !rm.locked.RIGHT) return true;
+                    if (rm.exits.RIGHT !== undefined && inHorizDoor && rm.locked.RIGHT && p.keys > 0) {
+                        p.keys--;
+                        rm.locked.RIGHT = false;
+                        SFX.pickup();
+                        return true;
+                    }
+                    return false;
+                }
+                if (ny < 32) {
+                    if (rm.exits.UP !== undefined && inVertDoor && !rm.locked.UP) return true;
+                    return false;
+                }
+                if (ny + 8 > 136) {
+                    if (rm.exits.DOWN !== undefined && inVertDoor && !rm.locked.DOWN) return true;
+                    if (rm.exits.DOWN !== undefined && inVertDoor && rm.locked.DOWN && p.keys > 0) {
+                        p.keys--;
+                        rm.locked.DOWN = false;
+                        SFX.pickup();
+                        return true;
+                    }
+                    return false;
+                }
+                return true;
+            };
+
+            if (dx !== 0 && tryMove(p.x + dx, p.y)) p.x += dx;
+            if (dy !== 0 && tryMove(p.x, p.y + dy)) p.y += dy;
+
+            // Room Transitions
+            if (p.x < 4 && rm.exits.LEFT !== undefined) {
+                pq.room = rm.exits.LEFT;
+                p.x = 142;
+            } else if (p.x > 148 && rm.exits.RIGHT !== undefined) {
+                pq.room = rm.exits.RIGHT;
+                p.x = 10;
+            } else if (p.y < 28 && rm.exits.UP !== undefined) {
+                pq.room = rm.exits.UP;
+                p.y = 126;
+            } else if (p.y > 132 && rm.exits.DOWN !== undefined) {
+                pq.room = rm.exits.DOWN;
+                p.y = 34;
+            }
+
+            // Compute Sword Hitbox
+            let swordBox = null;
+            if (p.attackTimer > 4) {
+                if (p.dir === 'UP') swordBox = { x: p.x - 2, y: p.y - 10, w: 12, h: 10 };
+                if (p.dir === 'DOWN') swordBox = { x: p.x - 2, y: p.y + 8, w: 12, h: 10 };
+                if (p.dir === 'LEFT') swordBox = { x: p.x - 10, y: p.y - 2, w: 10, h: 12 };
+                if (p.dir === 'RIGHT') swordBox = { x: p.x + 8, y: p.y - 2, w: 10, h: 12 };
+            }
+
+            // Update Items
+            for (let i = rm.items.length - 1; i >= 0; i--) {
+                const it = rm.items[i];
+                if (rectOverlap(p.x, p.y, 8, 8, it.x, it.y, 8, 8)) {
+                    SFX.pickup();
+                    if (it.type === 'KEY') {
+                        p.keys++;
+                        pq.score += 100;
+                    } else if (it.type === 'HEART') {
+                        p.hp = Math.min(p.maxHp, p.hp + 2);
+                        pq.score += 50;
+                    } else if (it.type === 'CHALICE') {
+                        pq.score += 1000 * pq.level;
+                        saveHighScore('QUEST', pq.score);
+                        pq.state = 'WIN';
+                        SFX.victory();
+                    }
+                    rm.items.splice(i, 1);
+                }
+            }
+
+            // Update Enemies
+            for (let i = rm.enemies.length - 1; i >= 0; i--) {
+                const e = rm.enemies[i];
+                const size = e.type === 'BOSS' ? 16 : 8;
+                if (e.hurt > 0) e.hurt--;
+
+                // Move enemy
+                e.x += e.vx;
+                e.y += e.vy;
+
+                if (e.x < 10 || e.x + size > 150) e.vx *= -1;
+                if (e.y < 34 || e.y + size > 134) e.vy *= -1;
+                for (const b of rm.blocks) {
+                    if (rectOverlap(e.x, e.y, size, size, b.x, b.y, b.w, b.h)) {
+                        e.vx *= -1;
+                        e.vy *= -1;
+                        e.x += e.vx * 2;
+                        e.y += e.vy * 2;
+                    }
+                }
+
+                // Sword Hit Check
+                if (swordBox && e.hurt === 0 && rectOverlap(swordBox.x, swordBox.y, swordBox.w, swordBox.h, e.x, e.y, size, size)) {
+                    e.hp--;
+                    e.hurt = 12;
+                    SFX.hit();
+                    if (e.hp <= 0) {
+                        pq.score += e.type === 'BOSS' ? 500 : (e.type === 'KNIGHT' ? 150 : 50);
+                        saveHighScore('QUEST', pq.score);
+                        if (e.type === 'BOSS') {
+                            rm.items.push({ type: 'CHALICE', x: e.x, y: e.y });
+                        } else if (Math.random() < 0.35) {
+                            rm.items.push({ type: 'HEART', x: e.x, y: e.y });
+                        }
+                        rm.enemies.splice(i, 1);
+                        continue;
+                    }
+                }
+
+                // Player Damage Check
+                if (p.invuln === 0 && rectOverlap(p.x, p.y, 8, 8, e.x, e.y, size, size)) {
+                    p.hp--;
+                    p.invuln = 40;
+                    SFX.hit();
+                    if (p.hp <= 0) {
+                        saveHighScore('QUEST', pq.score);
+                        pq.state = 'GAMEOVER';
+                        SFX.gameOver();
+                    }
+                }
+            }
+
+            // RENDER PIXEL QUEST
+            clearScreen(3);
+
+            // Top HUD (0..24)
+            fillRect(0, 0, SCREEN_W, 23, 0);
+            drawText('HP:', 4, 4, 3, 1);
+            for (let h = 0; h < p.maxHp / 2; h++) {
+                const heartFull = p.hp >= (h + 1) * 2;
+                const heartHalf = p.hp === h * 2 + 1;
+                fillRect(24 + h * 9, 4, 7, 6, heartFull ? 3 : (heartHalf ? 2 : 1));
+            }
+            drawText('KEY:' + p.keys, 4, 14, 2, 1);
+            drawText('SCR:' + pq.score, 52, 14, 3, 1);
+            drawText(rm.name.slice(0, 12), 56, 4, 2, 1);
+
+            // Dungeon Walls & Doors
+            fillRect(0, 24, 160, 8, 1);   // Top Wall
+            fillRect(0, 136, 160, 8, 1);  // Bottom Wall
+            fillRect(0, 24, 8, 120, 1);   // Left Wall
+            fillRect(152, 24, 8, 120, 1); // Right Wall
+            strokeRect(7, 31, 146, 106, 0);
+
+            // Carve Exits / Draw Locked Doors
+            if (rm.exits.UP !== undefined) {
+                fillRect(72, 24, 16, 8, rm.locked.UP ? 0 : 3);
+            }
+            if (rm.exits.DOWN !== undefined) {
+                fillRect(72, 136, 16, 8, rm.locked.DOWN ? 0 : 3);
+                if (rm.locked.DOWN) drawText('L', 78, 137, 3, 1);
+            }
+            if (rm.exits.LEFT !== undefined) {
+                fillRect(0, 74, 8, 16, rm.locked.LEFT ? 0 : 3);
+            }
+            if (rm.exits.RIGHT !== undefined) {
+                fillRect(152, 74, 8, 16, rm.locked.RIGHT ? 0 : 3);
+                if (rm.locked.RIGHT) drawText('L', 154, 79, 3, 1);
+            }
+
+            // Interior Stone Pillars
+            for (const b of rm.blocks) {
+                fillRect(b.x, b.y, b.w, b.h, 1);
+                strokeRect(b.x, b.y, b.w, b.h, 0);
+            }
+
+            // Items
+            for (const it of rm.items) {
+                const sp = it.type === 'KEY' ? SPRITE_KEY : (it.type === 'HEART' ? SPRITE_HEART : SPRITE_CHALICE);
+                drawSprite(sp, it.x, it.y, 1);
+            }
+
+            // Enemies
+            for (const e of rm.enemies) {
+                if (e.hurt % 2 === 1) continue;
+                if (e.type === 'BOSS') {
+                    drawSprite(SPRITE_BOSS, e.x, e.y, 2);
+                    // Boss HP bar
+                    fillRect(e.x, e.y - 5, 16, 3, 0);
+                    fillRect(e.x + 1, e.y - 4, Math.max(0, Math.floor((e.hp / e.maxHp) * 14)), 1, 2);
+                } else {
+                    drawSprite(e.type === 'KNIGHT' ? SPRITE_KNIGHT : SPRITE_SLIME, e.x, e.y, 1);
+                }
+            }
+
+            // Player & Sword
+            if (p.invuln % 2 === 0) {
+                if (p.dir === 'UP') drawSprite(SPRITE_HERO_UP, p.x, p.y, 1);
+                else if (p.dir === 'DOWN') drawSprite(SPRITE_HERO_DOWN, p.x, p.y, 1);
+                else if (p.dir === 'LEFT') drawSprite(SPRITE_HERO_SIDE, p.x, p.y, 1, true);
+                else drawSprite(SPRITE_HERO_SIDE, p.x, p.y, 1, false);
+            }
+
+            if (swordBox) {
+                fillRect(swordBox.x, swordBox.y, swordBox.w, swordBox.h, 0);
+                fillRect(swordBox.x + 2, swordBox.y + 2, swordBox.w - 4, swordBox.h - 4, 3);
+            }
+        }
+
+        /***********************************************************************
+         * 7. GAME 2: TETRA BLOCK (Authentic Game Boy Falling Block Puzzle)
+         *    - 10x18 Grid (6x6px cells => 60x108px board) + Side HUD
+         ***********************************************************************/
+        const TETROMINOES = [
+            { shape: [[1, 1, 1, 1]], shade: 1 },                  // I
+            { shape: [[1, 1], [1, 1]], shade: 0 },                // O
+            { shape: [[0, 1, 0], [1, 1, 1]], shade: 1 },          // T
+            { shape: [[0, 1, 1], [1, 1, 0]], shade: 2 },          // S
+            { shape: [[1, 1, 0], [0, 1, 1]], shade: 0 },          // Z
+            { shape: [[1, 0, 0], [1, 1, 1]], shade: 1 },          // J
+            { shape: [[0, 0, 1], [1, 1, 1]], shade: 2 }           // L
+        ];
+
+        let tb = {};
+
+        function initTetraBlock() {
+            const cols = 10;
+            const rows = 18;
+            const grid = Array.from({ length: rows }, () => Array(cols).fill(null));
+            tb = {
+                cols,
+                rows,
+                grid,
+                score: 0,
+                lines: 0,
+                level: 1,
+                dropTick: 0,
+                moveCooldown: 0,
+                gameOver: false,
+                current: null,
+                next: randomTetromino()
+            };
+            spawnNextTetromino();
+        }
+
+        function randomTetromino() {
+            const t = TETROMINOES[Math.floor(Math.random() * TETROMINOES.length)];
+            return {
+                shape: t.shape.map(r => [...r]),
+                shade: t.shade
+            };
+        }
+
+        function spawnNextTetromino() {
+            tb.current = {
+                shape: tb.next.shape,
+                shade: tb.next.shade,
+                x: Math.floor((tb.cols - tb.next.shape[0].length) / 2),
+                y: 0
+            };
+            tb.next = randomTetromino();
+            if (tetraCollides(tb.current.shape, tb.current.x, tb.current.y)) {
+                tb.gameOver = true;
+                saveHighScore('TETRA', tb.score);
+                SFX.gameOver();
+            }
+        }
+
+        function tetraCollides(shape, gx, gy) {
+            for (let r = 0; r < shape.length; r++) {
+                for (let c = 0; c < shape[r].length; c++) {
+                    if (!shape[r][c]) continue;
+                    const nx = gx + c;
+                    const ny = gy + r;
+                    if (nx < 0 || nx >= tb.cols || ny >= tb.rows) return true;
+                    if (ny >= 0 && tb.grid[ny][nx] !== null) return true;
+                }
+            }
+            return false;
+        }
+
+        function rotateMatrixCW(mat) {
+            const rows = mat.length;
+            const cols = mat[0].length;
+            const res = Array.from({ length: cols }, () => Array(rows).fill(0));
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    res[c][rows - 1 - r] = mat[r][c];
+                }
+            }
+            return res;
+        }
+
+        function lockTetromino() {
+            const cur = tb.current;
+            for (let r = 0; r < cur.shape.length; r++) {
+                for (let c = 0; c < cur.shape[r].length; c++) {
+                    if (cur.shape[r][c] && cur.y + r >= 0) {
+                        tb.grid[cur.y + r][cur.x + c] = cur.shade;
+                    }
+                }
+            }
+            SFX.drop();
+
+            // Check Full Lines
+            let cleared = 0;
+            for (let r = tb.rows - 1; r >= 0; r--) {
+                if (tb.grid[r].every(cell => cell !== null)) {
+                    tb.grid.splice(r, 1);
+                    tb.grid.unshift(Array(tb.cols).fill(null));
+                    cleared++;
+                    r++;
+                }
+            }
+            if (cleared > 0) {
+                const pts = [0, 40, 100, 300, 1200][cleared] * tb.level;
+                tb.score += pts;
+                tb.lines += cleared;
+                tb.level = 1 + Math.floor(tb.lines / 8);
+                saveHighScore('TETRA', tb.score);
+                SFX.lineClear();
+            }
+            spawnNextTetromino();
+        }
+
+        function updateAndDrawTetraBlock() {
+            if (justPressed.SELECT) {
+                switchCartridge('MENU');
+                return;
+            }
+
+            if (tb.gameOver) {
+                clearScreen(3);
+                fillRect(18, 32, 124, 80, 0);
+                fillRect(20, 34, 120, 76, 2);
+                drawTextCentered('GAME OVER', 46, 0, 1);
+                drawTextCentered('SCORE: ' + tb.score, 64, 0, 1);
+                drawTextCentered('LINES: ' + tb.lines, 76, 0, 1);
+                drawTextCentered('PRESS START', 94, 3, 1);
+                if (justPressed.START || justPressed.A) initTetraBlock();
+                return;
+            }
+
+            updateBGM('TETRA', true);
+
+            const cur = tb.current;
+            if (tb.moveCooldown > 0) tb.moveCooldown--;
+
+            // Horizontal Movement
+            if ((justPressed.LEFT || (keys.LEFT && tb.moveCooldown === 0))) {
+                if (!tetraCollides(cur.shape, cur.x - 1, cur.y)) {
+                    cur.x--;
+                    SFX.cursor();
+                }
+                tb.moveCooldown = justPressed.LEFT ? 10 : 4;
+            }
+            if ((justPressed.RIGHT || (keys.RIGHT && tb.moveCooldown === 0))) {
+                if (!tetraCollides(cur.shape, cur.x + 1, cur.y)) {
+                    cur.x++;
+                    SFX.cursor();
+                }
+                tb.moveCooldown = justPressed.RIGHT ? 10 : 4;
+            }
+
+            // Rotation (A or B)
+            if (justPressed.A || justPressed.B) {
+                let rotated = rotateMatrixCW(cur.shape);
+                if (justPressed.B) rotated = rotateMatrixCW(rotateMatrixCW(rotated));
+                if (!tetraCollides(rotated, cur.x, cur.y)) {
+                    cur.shape = rotated;
+                    SFX.rotate();
+                } else if (!tetraCollides(rotated, cur.x - 1, cur.y)) {
+                    cur.x--;
+                    cur.shape = rotated;
+                    SFX.rotate();
+                } else if (!tetraCollides(rotated, cur.x + 1, cur.y)) {
+                    cur.x++;
+                    cur.shape = rotated;
+                    SFX.rotate();
+                }
+            }
+
+            // Instant Hard Drop (UP)
+            if (justPressed.UP) {
+                while (!tetraCollides(cur.shape, cur.x, cur.y + 1)) {
+                    cur.y++;
+                    tb.score += 2;
+                }
+                lockTetromino();
+            } else {
+                // Gravity + Soft Drop (DOWN)
+                tb.dropTick++;
+                const speed = keys.DOWN ? 3 : Math.max(6, 36 - (tb.level - 1) * 3);
+                if (tb.dropTick >= speed) {
+                    tb.dropTick = 0;
+                    if (!tetraCollides(cur.shape, cur.x, cur.y + 1)) {
+                        cur.y++;
+                        if (keys.DOWN) tb.score += 1;
+                    } else {
+                        lockTetromino();
+                    }
+                }
+            }
+
+            // RENDER TETRA BLOCK
+            clearScreen(2);
+
+            const boardX = 12;
+            const boardY = 10;
+            const cell = 7; // 10*7 = 70px wide, 18*7 = 126px tall
+
+            // Playfield Frame
+            fillRect(boardX - 2, boardY - 2, tb.cols * cell + 4, tb.rows * cell + 4, 0);
+            fillRect(boardX, boardY, tb.cols * cell, tb.rows * cell, 3);
+
+            const drawBlockCell = (px, py, shade) => {
+                fillRect(px, py, cell, cell, 0);
+                fillRect(px + 1, py + 1, cell - 2, cell - 2, shade);
+                fillRect(px + 2, py + 2, 2, 2, 3);
+            };
+
+            // Locked Blocks
+            for (let r = 0; r < tb.rows; r++) {
+                for (let c = 0; c < tb.cols; c++) {
+                    if (tb.grid[r][c] !== null) {
+                        drawBlockCell(boardX + c * cell, boardY + r * cell, tb.grid[r][c]);
+                    }
+                }
+            }
+
+            // Active Piece
+            if (tb.current) {
+                for (let r = 0; r < cur.shape.length; r++) {
+                    for (let c = 0; c < cur.shape[r].length; c++) {
+                        if (cur.shape[r][c]) {
+                            drawBlockCell(boardX + (cur.x + c) * cell, boardY + (cur.y + r) * cell, cur.shade);
+                        }
+                    }
+                }
+            }
+
+            // Right HUD Panel
+            const hudX = 90;
+            fillRect(hudX, 10, 62, 126, 0);
+            fillRect(hudX + 2, 12, 58, 122, 3);
+
+            drawText('SCORE', hudX + 6, 18, 0, 1);
+            drawText(String(tb.score), hudX + 6, 27, 1, 1);
+
+            drawText('LINES', hudX + 6, 42, 0, 1);
+            drawText(String(tb.lines), hudX + 6, 51, 1, 1);
+
+            drawText('LEVEL', hudX + 6, 66, 0, 1);
+            drawText(String(tb.level), hudX + 6, 75, 1, 1);
+
+            drawText('NEXT', hudX + 6, 90, 0, 1);
+            strokeRect(hudX + 8, 99, 44, 28, 0);
+            for (let r = 0; r < tb.next.shape.length; r++) {
+                for (let c = 0; c < tb.next.shape[r].length; c++) {
+                    if (tb.next.shape[r][c]) {
+                        drawBlockCell(hudX + 14 + c * cell, 105 + r * cell, tb.next.shade);
+                    }
+                }
+            }
+        }
+
+        /***********************************************************************
+         * 8. GAME 3: STAR BLASTER (Vertical Scrolling Space Shooter)
+         ***********************************************************************/
+        const SPRITE_SHIP = [
+            '...00...',
+            '..0330..',
+            '..0220..',
+            '.001100.',
+            '03011030',
+            '02000020',
+            '00.00.00',
+            '...22...'
+        ];
+        const SPRITE_ALIEN_1 = [
+            '.00..00.',
+            '02200220',
+            '00111100',
+            '.013310.',
+            '.011110.',
+            '00.00.00',
+            '0......0',
+            '........'
+        ];
+        const SPRITE_DREADNOUGHT = [
+            '..00000000..',
+            '.0112222110.',
+            '010013310010',
+            '011111111110',
+            '.0120110210.',
+            '..00.00.00..'
+        ];
+
+        let sb = {};
+
+        function initStarBlaster() {
+            const stars = Array.from({ length: 22 }, () => ({
+                x: Math.random() * SCREEN_W,
+                y: 16 + Math.random() * (SCREEN_H - 16),
+                spd: 0.5 + Math.random() * 1.2
+            }));
+            sb = {
+                x: 76,
+                y: 122,
+                lives: 3,
+                bombs: 2,
+                score: 0,
+                wave: 1,
+                fireCooldown: 0,
+                invuln: 0,
+                bombFlash: 0,
+                bullets: [],
+                enemyBullets: [],
+                enemies: [],
+                particles: [],
+                stars,
+                spawnTick: 0,
+                bossActive: false,
+                gameOver: false
+            };
+        }
+
+        function updateAndDrawStarBlaster() {
+            if (justPressed.SELECT) {
+                switchCartridge('MENU');
+                return;
+            }
+
+            if (sb.gameOver) {
+                clearScreen(0);
+                fillRect(18, 34, 124, 76, 3);
+                strokeRect(20, 36, 120, 72, 0);
+                drawTextCentered('MISSION FAILED', 48, 0, 1);
+                drawTextCentered('SCORE: ' + sb.score, 66, 1, 1);
+                drawTextCentered('WAVE: ' + sb.wave, 78, 1, 1);
+                drawTextCentered('PRESS START', 94, 0, 1);
+                if (justPressed.START || justPressed.A) initStarBlaster();
+                return;
+            }
+
+            updateBGM('STAR', true);
+
+            // Player Ship Controls
+            const spd = 1.8;
+            if (keys.LEFT && sb.x > 6) sb.x -= spd;
+            if (keys.RIGHT && sb.x < SCREEN_W - 14) sb.x += spd;
+            if (keys.UP && sb.y > 24) sb.y -= spd;
+            if (keys.DOWN && sb.y < SCREEN_H - 12) sb.y += spd;
+
+            if (sb.fireCooldown > 0) sb.fireCooldown--;
+            if (sb.invuln > 0) sb.invuln--;
+            if (sb.bombFlash > 0) sb.bombFlash--;
+
+            // Twin Lasers (A Button)
+            if ((keys.A || justPressed.A) && sb.fireCooldown === 0) {
+                sb.bullets.push({ x: sb.x + 1, y: sb.y - 4 });
+                sb.bullets.push({ x: sb.x + 6, y: sb.y - 4 });
+                sb.fireCooldown = 9;
+                SFX.laser();
+            }
+
+            // Nova Bomb (B Button)
+            if (justPressed.B && sb.bombs > 0) {
+                sb.bombs--;
+                sb.bombFlash = 12;
+                sb.enemyBullets = [];
+                SFX.explosion();
+                for (let i = sb.enemies.length - 1; i >= 0; i--) {
+                    sb.enemies[i].hp -= 6;
+                    if (sb.enemies[i].hp <= 0) {
+                        sb.score += sb.enemies[i].isBoss ? 500 : 50;
+                        if (sb.enemies[i].isBoss) {
+                            sb.bossActive = false;
+                            sb.wave++;
+                            sb.bombs = Math.min(3, sb.bombs + 1);
+                        }
+                        sb.enemies.splice(i, 1);
+                    }
+                }
+                saveHighScore('STAR', sb.score);
+            }
+
+            // Spawn Enemies & Boss Dreadnoughts
+            sb.spawnTick++;
+            if (!sb.bossActive && sb.spawnTick > 0 && sb.spawnTick % 45 === 0) {
+                const isSine = Math.random() < 0.45;
+                sb.enemies.push({
+                    x: 14 + Math.random() * 124,
+                    y: 16,
+                    vx: isSine ? 1.1 : 0,
+                    vy: 0.65 + sb.wave * 0.1,
+                    hp: 2,
+                    maxHp: 2,
+                    isBoss: false,
+                    sine: isSine
+                });
+            }
+
+            if (!sb.bossActive && sb.spawnTick >= 450) {
+                sb.bossActive = true;
+                sb.spawnTick = 0;
+                sb.enemies.push({
+                    x: 60,
+                    y: 22,
+                    vx: 0.9,
+                    vy: 0,
+                    hp: 18 + sb.wave * 6,
+                    maxHp: 18 + sb.wave * 6,
+                    isBoss: true
+                });
+            }
+
+            // Update Player Bullets
+            for (let i = sb.bullets.length - 1; i >= 0; i--) {
+                sb.bullets[i].y -= 3.5;
+                if (sb.bullets[i].y < 14) sb.bullets.splice(i, 1);
+            }
+
+            // Update Enemies
+            for (let i = sb.enemies.length - 1; i >= 0; i--) {
+                const e = sb.enemies[i];
+                const w = e.isBoss ? 24 : 8;
+                const h = e.isBoss ? 12 : 8;
+
+                e.x += e.vx;
+                e.y += e.vy;
+
+                if (e.isBoss || e.sine) {
+                    if (e.x < 8 || e.x + w > SCREEN_W - 8) e.vx *= -1;
+                }
+
+                // Enemy Firing
+                if (Math.random() < (e.isBoss ? 0.05 : 0.012)) {
+                    sb.enemyBullets.push({ x: e.x + w / 2, y: e.y + h, vy: 1.8 });
+                }
+
+                // Check Bullet Hits
+                let destroyed = false;
+                for (let b = sb.bullets.length - 1; b >= 0; b--) {
+                    const bul = sb.bullets[b];
+                    if (rectOverlap(bul.x, bul.y, 2, 4, e.x, e.y, w, h)) {
+                        sb.bullets.splice(b, 1);
+                        e.hp--;
+                        if (e.hp <= 0) {
+                            SFX.explosion();
+                            sb.score += e.isBoss ? 500 : 40;
+                            saveHighScore('STAR', sb.score);
+                            for (let p = 0; p < 6; p++) {
+                                sb.particles.push({
+                                    x: e.x + w / 2,
+                                    y: e.y + h / 2,
+                                    vx: (Math.random() - 0.5) * 2.5,
+                                    vy: (Math.random() - 0.5) * 2.5,
+                                    life: 14
+                                });
+                            }
+                            if (e.isBoss) {
+                                sb.bossActive = false;
+                                sb.wave++;
+                                sb.bombs = Math.min(3, sb.bombs + 1);
+                            }
+                            sb.enemies.splice(i, 1);
+                            destroyed = true;
+                            break;
+                        }
+                    }
+                }
+                if (destroyed) continue;
+
+                // Collide with Player
+                if (sb.invuln === 0 && rectOverlap(sb.x, sb.y, 8, 8, e.x, e.y, w, h)) {
+                    sb.lives--;
+                    sb.invuln = 45;
+                    SFX.hit();
+                    if (sb.lives <= 0) {
+                        saveHighScore('STAR', sb.score);
+                        sb.gameOver = true;
+                        SFX.gameOver();
+                    }
+                }
+
+                if (!e.isBoss && e.y > SCREEN_H) {
+                    sb.enemies.splice(i, 1);
+                }
+            }
+
+            // Update Enemy Bullets
+            for (let i = sb.enemyBullets.length - 1; i >= 0; i--) {
+                const eb = sb.enemyBullets[i];
+                eb.y += eb.vy;
+                if (sb.invuln === 0 && rectOverlap(eb.x, eb.y, 2, 3, sb.x + 1, sb.y + 1, 6, 6)) {
+                    sb.enemyBullets.splice(i, 1);
+                    sb.lives--;
+                    sb.invuln = 45;
+                    SFX.hit();
+                    if (sb.lives <= 0) {
+                        saveHighScore('STAR', sb.score);
+                        sb.gameOver = true;
+                        SFX.gameOver();
+                    }
+                    continue;
+                }
+                if (eb.y > SCREEN_H) sb.enemyBullets.splice(i, 1);
+            }
+
+            // RENDER STAR BLASTER (Dark Space Shade 0 Background!)
+            clearScreen(sb.bombFlash % 2 === 1 ? 3 : 0);
+
+            // Scrolling Starfield
+            for (const st of sb.stars) {
+                st.y += st.spd;
+                if (st.y > SCREEN_H) { st.y = 15; st.x = Math.random() * SCREEN_W; }
+                fillRect(st.x, st.y, 1, 1, st.spd > 1.1 ? 3 : 2);
+            }
+
+            // Particles
+            for (let i = sb.particles.length - 1; i >= 0; i--) {
+                const pt = sb.particles[i];
+                pt.x += pt.vx;
+                pt.y += pt.vy;
+                pt.life--;
+                fillRect(pt.x, pt.y, 2, 2, 3);
+                if (pt.life <= 0) sb.particles.splice(i, 1);
+            }
+
+            // Bullets
+            for (const b of sb.bullets) fillRect(b.x, b.y, 2, 4, 3);
+            for (const eb of sb.enemyBullets) fillRect(eb.x, eb.y, 2, 3, 2);
+
+            // Enemies
+            for (const e of sb.enemies) {
+                if (e.isBoss) {
+                    drawSprite(SPRITE_DREADNOUGHT, e.x, e.y, 2);
+                    fillRect(e.x, e.y - 5, 24, 3, 1);
+                    fillRect(e.x + 1, e.y - 4, Math.max(0, Math.floor((e.hp / e.maxHp) * 22)), 1, 3);
+                } else {
+                    drawSprite(SPRITE_ALIEN_1, e.x, e.y, 1);
+                }
+            }
+
+            // Player Ship
+            if (sb.invuln % 2 === 0) {
+                drawSprite(SPRITE_SHIP, sb.x, sb.y, 1);
+            }
+
+            // Top HUD Bar
+            fillRect(0, 0, SCREEN_W, 13, 2);
+            fillRect(0, 13, SCREEN_W, 1, 3);
+            drawText('SCR:' + sb.score, 4, 4, 0, 1);
+            drawText('B:' + sb.bombs, 78, 4, 0, 1);
+            drawText('LIVES:' + sb.lives, 112, 4, 0, 1);
+        }
+
+        /***********************************************************************
+         * 9. GAME 4: SNAKE GB DX (Retro Arcade Snake with Bonus Bugs)
+         ***********************************************************************/
+        let sn = {};
+
+        function initSnakeGB() {
+            sn = {
+                cols: 19,
+                rows: 15,
+                body: [
+                    { x: 9, y: 7 },
+                    { x: 8, y: 7 },
+                    { x: 7, y: 7 }
+                ],
+                dir: { x: 1, y: 0 },
+                nextDir: { x: 1, y: 0 },
+                apple: { x: 13, y: 7 },
+                bonusBug: null,
+                score: 0,
+                tick: 0,
+                gameOver: false
+            };
+            spawnSnakeApple();
+        }
+
+        function spawnSnakeApple() {
+            let valid = false;
+            while (!valid) {
+                const ax = Math.floor(Math.random() * sn.cols);
+                const ay = Math.floor(Math.random() * sn.rows);
+                valid = !sn.body.some(seg => seg.x === ax && seg.y === ay);
+                if (valid) sn.apple = { x: ax, y: ay };
+            }
+        }
+
+        function updateAndDrawSnakeGB() {
+            if (justPressed.SELECT) {
+                switchCartridge('MENU');
+                return;
+            }
+
+            if (sn.gameOver) {
+                clearScreen(3);
+                fillRect(20, 34, 120, 74, 0);
+                fillRect(22, 36, 116, 70, 2);
+                drawTextCentered('SNAKE CRASHED!', 48, 0, 1);
+                drawTextCentered('SCORE: ' + sn.score, 66, 0, 1);
+                drawTextCentered('HI: ' + highScores.SNAKE, 78, 1, 1);
+                drawTextCentered('PRESS START', 94, 3, 1);
+                if (justPressed.START || justPressed.A) initSnakeGB();
+                return;
+            }
+
+            updateBGM('SNAKE', true);
+
+            if ((keys.UP || justPressed.UP) && sn.dir.y === 0) sn.nextDir = { x: 0, y: -1 };
+            else if ((keys.DOWN || justPressed.DOWN) && sn.dir.y === 0) sn.nextDir = { x: 0, y: 1 };
+            else if ((keys.LEFT || justPressed.LEFT) && sn.dir.x === 0) sn.nextDir = { x: -1, y: 0 };
+            else if ((keys.RIGHT || justPressed.RIGHT) && sn.dir.x === 0) sn.nextDir = { x: 1, y: 0 };
+
+            sn.tick++;
+            if (sn.bonusBug) {
+                sn.bonusBug.timer--;
+                if (sn.bonusBug.timer <= 0) sn.bonusBug = null;
+            }
+
+            const speed = keys.A ? 5 : Math.max(5, 11 - Math.floor(sn.score / 80));
+            if (sn.tick >= speed) {
+                sn.tick = 0;
+                sn.dir = sn.nextDir;
+                const head = {
+                    x: sn.body[0].x + sn.dir.x,
+                    y: sn.body[0].y + sn.dir.y
+                };
+
+                // Wall or Self Collision
+                if (
+                    head.x < 0 || head.x >= sn.cols ||
+                    head.y < 0 || head.y >= sn.rows ||
+                    sn.body.some(s => s.x === head.x && s.y === head.y)
+                ) {
+                    saveHighScore('SNAKE', sn.score);
+                    sn.gameOver = true;
+                    SFX.gameOver();
+                    return;
+                }
+
+                sn.body.unshift(head);
+
+                if (head.x === sn.apple.x && head.y === sn.apple.y) {
+                    sn.score += 10;
+                    saveHighScore('SNAKE', sn.score);
+                    SFX.pickup();
+                    spawnSnakeApple();
+                    if (!sn.bonusBug && Math.random() < 0.35) {
+                        sn.bonusBug = {
+                            x: Math.floor(Math.random() * sn.cols),
+                            y: Math.floor(Math.random() * sn.rows),
+                            timer: 95
+                        };
+                    }
+                } else if (sn.bonusBug && head.x === sn.bonusBug.x && head.y === sn.bonusBug.y) {
+                    sn.score += 50;
+                    saveHighScore('SNAKE', sn.score);
+                    sn.bonusBug = null;
+                    SFX.lineClear();
+                } else {
+                    sn.body.pop();
+                }
+            }
+
+            // RENDER SNAKE GB
+            clearScreen(3);
+
+            // Top HUD
+            fillRect(0, 0, SCREEN_W, 15, 0);
+            drawText('SNAKE DX', 4, 5, 3, 1);
+            drawText('SCR:' + sn.score, 66, 5, 2, 1);
+            drawText('HI:' + highScores.SNAKE, 118, 5, 3, 1);
+
+            // Arena Frame (19*8 = 152px wide, 15*8 = 120px tall)
+            const ox = 4;
+            const oy = 19;
+            strokeRect(ox - 2, oy - 2, sn.cols * 8 + 4, sn.rows * 8 + 4, 0);
+
+            // Apple
+            fillRect(ox + sn.apple.x * 8 + 1, oy + sn.apple.y * 8 + 1, 6, 6, 0);
+            fillRect(ox + sn.apple.x * 8 + 2, oy + sn.apple.y * 8 + 2, 2, 2, 3);
+
+            // Bonus Bug
+            if (sn.bonusBug && Math.floor(sn.bonusBug.timer / 4) % 2 === 0) {
+                strokeRect(ox + sn.bonusBug.x * 8, oy + sn.bonusBug.y * 8, 8, 8, 0);
+                fillRect(ox + sn.bonusBug.x * 8 + 2, oy + sn.bonusBug.y * 8 + 2, 4, 4, 1);
+            }
+
+            // Snake Body & Head
+            sn.body.forEach((seg, idx) => {
+                const px = ox + seg.x * 8;
+                const py = oy + seg.y * 8;
+                if (idx === 0) {
+                    fillRect(px, py, 8, 8, 0);
+                    fillRect(px + 2, py + 2, 2, 2, 3);
+                } else {
+                    fillRect(px + 1, py + 1, 6, 6, idx % 2 === 0 ? 0 : 1);
+                }
+            });
+        }
+
+        /***********************************************************************
+         * 9B. GAME 5: TURBO RACER GB (DMG-TR-04 - Retro F-1 Highway Racer)
+         *     - 3-Lane Highway with Scrolling Kerbs, Rival Cars & Oil Slicks
+         *     - Hold A for Turbo Boost, Hold B for Brakes, Pass Checkpoints!
+         ***********************************************************************/
+        const SPRITE_RACE_CAR = [
+            '..0000..',
+            '.013310.',
+            '00122100',
+            '00133100',
+            '..0220..',
+            '00122100',
+            '00011000',
+            '..0..0..'
+        ];
+        const SPRITE_RIVAL_CAR = [
+            '..0000..',
+            '00111100',
+            '00122100',
+            '..0110..',
+            '00133100',
+            '00122100',
+            '.000000.',
+            '........'
+        ];
+        const SPRITE_OIL_SLICK = [
+            '..0000..',
+            '.010010.',
+            '00010000',
+            '01000010',
+            '.000100.',
+            '..0000..'
+        ];
+
+        let tr = {};
+
+        function initTurboRacer() {
+            tr = {
+                x: 76,
+                y: 114,
+                speed: 1.5,
+                maxSpeed: 3.8,
+                score: 0,
+                distance: 0,
+                nextCheckpoint: 600,
+                stage: 1,
+                timeLeft: 45 * 60, // 45 seconds at 60fps
+                shield: 3,
+                invuln: 0,
+                skidTimer: 0,
+                roadScroll: 0,
+                spawnTick: 0,
+                checkpointBannerTimer: 0,
+                rivals: [],
+                oils: [],
+                gameOver: false
+            };
+        }
+
+        function updateAndDrawTurboRacer() {
+            if (justPressed.SELECT) {
+                switchCartridge('MENU');
+                return;
+            }
+
+            if (tr.gameOver) {
+                clearScreen(3);
+                fillRect(16, 30, 128, 84, 0);
+                fillRect(18, 32, 124, 80, 2);
+                drawTextCentered('RACE OVER!', 42, 0, 1);
+                drawTextCentered('SCORE: ' + tr.score, 58, 0, 1);
+                drawTextCentered('STAGE: ' + tr.stage, 70, 1, 1);
+                drawTextCentered('HI: ' + highScores.RACE, 82, 1, 1);
+                drawTextCentered('PRESS START', 96, 3, 1);
+                if (justPressed.START || justPressed.A) initTurboRacer();
+                return;
+            }
+
+            updateBGM('RACE', true);
+
+            // Acceleration / Turbo (A) & Brakes (B)
+            const targetMax = keys.A ? (tr.maxSpeed + 1.1) : tr.maxSpeed;
+            if (keys.B) {
+                tr.speed = Math.max(0.9, tr.speed - 0.08);
+            } else if (tr.speed < targetMax) {
+                tr.speed = Math.min(targetMax, tr.speed + (keys.A ? 0.045 : 0.025));
+            } else {
+                tr.speed = Math.max(targetMax, tr.speed - 0.03);
+            }
+
+            // Steering (Left / Right) + Oil Skid Effect
+            if (tr.skidTimer > 0) {
+                tr.skidTimer--;
+                tr.x += Math.sin(tr.skidTimer * 0.8) * 1.8;
+            } else {
+                const steerSpd = 1.75;
+                if (keys.LEFT) tr.x -= steerSpd;
+                if (keys.RIGHT) tr.x += steerSpd;
+            }
+            // Clamp to road boundaries (Road is x: 34..126, width 92)
+            tr.x = Math.max(38, Math.min(114, tr.x));
+
+            if (tr.invuln > 0) tr.invuln--;
+            if (tr.checkpointBannerTimer > 0) tr.checkpointBannerTimer--;
+
+            // Advance Road & Distance
+            tr.roadScroll = (tr.roadScroll + tr.speed) % 16;
+            tr.distance += tr.speed;
+            tr.score += Math.floor(tr.speed);
+            saveHighScore('RACE', tr.score);
+
+            // Countdown Timer & Checkpoints
+            tr.timeLeft--;
+            if (tr.distance >= tr.nextCheckpoint) {
+                tr.stage++;
+                tr.nextCheckpoint += 700 + tr.stage * 150;
+                tr.timeLeft = Math.min(60 * 60, tr.timeLeft + 22 * 60);
+                tr.score += 250 * tr.stage;
+                tr.checkpointBannerTimer = 75;
+                saveHighScore('RACE', tr.score);
+                SFX.lineClear();
+            }
+
+            if (tr.timeLeft <= 0) {
+                tr.gameOver = true;
+                saveHighScore('RACE', tr.score);
+                SFX.gameOver();
+                return;
+            }
+
+            // Spawn Rival Cars & Oil Slicks in 3 Lanes (x = 46, 76, 104)
+            tr.spawnTick++;
+            const spawnRate = Math.max(24, 48 - tr.stage * 3);
+            if (tr.spawnTick >= spawnRate) {
+                tr.spawnTick = 0;
+                const lanes = [46, 76, 104];
+                const laneX = lanes[Math.floor(Math.random() * lanes.length)];
+                if (Math.random() < 0.22) {
+                    tr.oils.push({ x: laneX, y: 14 });
+                } else {
+                    tr.rivals.push({
+                        x: laneX + (Math.random() - 0.5) * 6,
+                        y: 12,
+                        spd: 0.9 + Math.random() * 1.1,
+                        drift: (Math.random() < 0.3) ? (Math.random() < 0.5 ? -0.25 : 0.25) : 0
+                    });
+                }
+            }
+
+            // Update Oil Slicks
+            for (let i = tr.oils.length - 1; i >= 0; i--) {
+                const o = tr.oils[i];
+                o.y += tr.speed;
+                if (tr.skidTimer === 0 && rectOverlap(tr.x, tr.y, 8, 8, o.x, o.y, 8, 6)) {
+                    tr.skidTimer = 22;
+                    tr.speed = Math.max(1.2, tr.speed - 1.2);
+                    SFX.rotate();
+                    tr.oils.splice(i, 1);
+                    continue;
+                }
+                if (o.y > SCREEN_H) tr.oils.splice(i, 1);
+            }
+
+            // Update Rival Cars
+            for (let i = tr.rivals.length - 1; i >= 0; i--) {
+                const rv = tr.rivals[i];
+                rv.y += (tr.speed - rv.spd + 0.8);
+                rv.x += rv.drift;
+                if (rv.x < 40 || rv.x > 112) rv.drift *= -1;
+
+                if (tr.invuln === 0 && rectOverlap(tr.x + 1, tr.y + 1, 6, 7, rv.x + 1, rv.y + 1, 6, 7)) {
+                    tr.shield--;
+                    tr.invuln = 45;
+                    tr.speed = 1.0;
+                    SFX.explosion();
+                    tr.rivals.splice(i, 1);
+                    if (tr.shield <= 0) {
+                        tr.gameOver = true;
+                        saveHighScore('RACE', tr.score);
+                        SFX.gameOver();
+                        return;
+                    }
+                    continue;
+                }
+
+                if (rv.y > SCREEN_H) {
+                    tr.score += 25;
+                    tr.rivals.splice(i, 1);
+                }
+            }
+
+            // RENDER TURBO RACER GB
+            clearScreen(2); // Grass verge shade 2
+
+            // Highway Asphalt (x: 34..126)
+            fillRect(34, 15, 92, SCREEN_H - 15, 3);
+
+            // Animated Red/White Road Kerbs & Roadside Posts
+            const offset = Math.floor(tr.roadScroll);
+            for (let y = 15 - offset; y < SCREEN_H; y += 8) {
+                const kerbShade = Math.floor((y + offset) / 8) % 2 === 0 ? 0 : 3;
+                fillRect(30, y, 4, 8, kerbShade);
+                fillRect(126, y, 4, 8, kerbShade);
+            }
+            for (let y = 15 + offset; y < SCREEN_H; y += 16) {
+                // Dashed Lane Dividers
+                fillRect(64, y, 2, 8, 1);
+                fillRect(94, y, 2, 8, 1);
+                // Roadside Shrubs/Posts
+                fillRect(14, y, 6, 6, 1);
+                fillRect(140, y, 6, 6, 1);
+            }
+
+            // Oil Slicks
+            for (const o of tr.oils) {
+                drawSprite(SPRITE_OIL_SLICK, o.x, o.y, 1);
+            }
+
+            // Rival Cars
+            for (const rv of tr.rivals) {
+                drawSprite(SPRITE_RIVAL_CAR, rv.x, rv.y, 1);
+            }
+
+            // Player F-1 Turbo Car
+            if (tr.invuln % 2 === 0) {
+                drawSprite(SPRITE_RACE_CAR, tr.x, tr.y, 1);
+                // Exhaust flame when holding A (Turbo)
+                if (keys.A && Math.floor(tr.roadScroll) % 2 === 0) {
+                    fillRect(tr.x + 2, tr.y + 8, 4, 3, 0);
+                }
+            }
+
+            // Checkpoint Banner Popup
+            if (tr.checkpointBannerTimer > 0 && Math.floor(tr.checkpointBannerTimer / 5) % 2 === 0) {
+                fillRect(38, 44, 84, 15, 0);
+                drawTextCentered('CHECKPOINT!', 49, 3, 1);
+            }
+
+            // Top Telemetry HUD Bar
+            fillRect(0, 0, SCREEN_W, 15, 0);
+            const kmh = Math.floor(tr.speed * 58);
+            drawText(kmh + 'KM', 4, 5, 3, 1);
+            drawText('T:' + Math.ceil(tr.timeLeft / 60), 46, 5, 2, 1);
+            drawText('HP:' + tr.shield, 84, 5, 3, 1);
+            drawText('S:' + tr.stage, 122, 5, 2, 1);
+        }
+
+        /***********************************************************************
+         * 10. MASTER 60FPS CONSOLE SIMULATION LOOP
+         ***********************************************************************/
+        function gameLoop() {
+            if (!powerOn) {
+                // Powered-Off LCD Appearance
+                ctx.fillStyle = '#7e8c54';
+                ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+            } else {
+                switch (currentCart) {
+                    case 'BOOT':
+                    case 'NOCART':
+                        updateAndDrawBoot();
+                        break;
+                    case 'MENU':
+                        updateAndDrawMenu();
+                        break;
+                    case 'QUEST':
+                        updateAndDrawPixelQuest();
+                        break;
+                    case 'TETRA':
+                        updateAndDrawTetraBlock();
+                        break;
+                    case 'STAR':
+                        updateAndDrawStarBlaster();
+                        break;
+                    case 'SNAKE':
+                        updateAndDrawSnakeGB();
+                        break;
+                    case 'RACE':
+                        updateAndDrawTurboRacer();
+                        break;
+                }
+            }
+
+            clearJustPressed();
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.onload = function () {
+            renderCartridgeRack();
+            updateTopSlotVisual(PHYSICAL_CARTRIDGES[0], 'seated');
+            startBootSequence('MENU');
+            requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>
